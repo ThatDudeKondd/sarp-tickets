@@ -1,0 +1,27 @@
+{
+  "name": "config_auto_replies",
+  "parts": [
+    {
+      "type": "text",
+      "content": "**Auto-Replies**\nSelect a message to edit. Placeholders: `{opener}`, `{staff}`, `{seconds}`, `{user}`, and `{hours}`."
+    },
+    { "type": "separator" },
+    {
+      "type": "string_select",
+      "customId": "config:auto_replies:pick",
+      "placeholder": "Which auto-reply?",
+      "options": [
+        { "label": "Inactivity checkup", "value": "checkup", "description": "{checkup_preview}" },
+        { "label": "Claim notice", "value": "claim", "description": "{claim_preview}" },
+        { "label": "Unclaim notice", "value": "unclaim", "description": "{unclaim_preview}" },
+        { "label": "Anti-ping warning 1", "value": "anti_ping_1", "description": "{anti_ping_1_preview}" },
+        { "label": "Anti-ping warning 2", "value": "anti_ping_2", "description": "{anti_ping_2_preview}" },
+        { "label": "Anti-ping timeout notice", "value": "timeout", "description": "{timeout_preview}" },
+        { "label": "Closing countdown", "value": "closing", "description": "{closing_preview}" },
+        { "label": "Inactivity close reason", "value": "inactivity_close_reason", "description": "{inactivity_close_reason_preview}" },
+        { "label": "Leave close reason", "value": "leave_close_reason", "description": "{leave_close_reason_preview}" },
+        { "label": "Ping-punish close reason", "value": "ping_close_reason", "description": "{ping_close_reason_preview}" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "name": "close_request",
+  "parts": [
+    {
+      "type": "text",
+      "content": "Hey {openerMention}, staff have requested that this ticket be closed.{reasonLine}"
+    },
+    { "type": "separator" },
+    {
+      "type": "buttons",
+      "buttons": [
+        {
+          "customId": "ticket:closerequest:accept",
+          "label": "Close",
+          "style": "Success"
+        },
+        {
+          "customId": "ticket:closerequest:deny",
+          "label": "Deny",
+          "style": "Danger"
+        }
+      ]
+    }
+  ]
+}

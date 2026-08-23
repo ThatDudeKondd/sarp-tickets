@@ -1,0 +1,86 @@
+import discordTranscripts, { ExportReturnType } from 'discord-html-transcripts';
+import { AttachmentBuilder, type TextChannel } from 'discord.js';
+import { closeDelayMs, getConfig } from '../config';
+import {
+  buildClosingNotice,
+  buildTranscriptSummary,
+  V2_FLAGS,
+} from '../components/builders';
+import { ticketsDb, type TicketRow } from '../db';
+import { formatGmt } from '../utils/permissions';
+
+const closing = new Set<string>();
+
+export function isClosing(channelId: string): boolean {
+  return closing.has(channelId);
+}
+
+export async function closeTicket(
+  channel: TextChannel,
+  ticket: TicketRow,
+  closedById: string,
+  closeReason: string,
+  options?: { delay?: boolean },
+): Promise<void> {
+  if (ticket.status !== 'open') return;
+  if (closing.has(channel.id)) return;
+  closing.add(channel.id);
+
+  try {
+    if (options?.delay !== false) {
+      await channel.send({
+        components: [buildClosingNotice(3)],
+        flags: V2_FLAGS,
+      });
+      await new Promise((r) => setTimeout(r, closeDelayMs()));
+    }
+
+    const fresh = ticketsDb.getByChannel(channel.id);
+    if (!fresh || fresh.status !== 'open') return;
+
+    const closed = ticketsDb.close(channel.id, closedById, closeReason || 'No reason provided');
+    if (!closed) return;
+
+    const fileName = `transcript-${channel.name}.html`;
+    const attachment = (await discordTranscripts.createTranscript(channel, {
+      limit: -1,
+      filename: fileName,
+      saveImages: false,
+      poweredBy: false,
+      returnType: ExportReturnType.Attachment,
+    })) as AttachmentBuilder;
+
+    const opener = await channel.client.users.fetch(closed.opener_id).catch(() => null);
+    const closer = await channel.client.users.fetch(closedById).catch(() => null);
+
+    const openedBy = opener ? `${opener.username} (${opener.id})` : closed.opener_id;
+    const closedBy = closer ? `${closer.username} (${closer.id})` : closedById;
+
+    const transcriptChannel = await channel.client.channels
+      .fetch(getConfig().Transcript_Channel)
+      .catch(() => null);
+
+    if (transcriptChannel?.isTextBased() && 'send' in transcriptChannel) {
+      const summary = buildTranscriptSummary({
+        channelName: channel.name,
+        openedBy,
+        closedBy,
+        closeReason: closed.close_reason ?? closeReason,
+        openingReason: closed.reason,
+        openedAt: formatGmt(closed.opened_at),
+        closedAt: formatGmt(closed.closed_at ?? Date.now()),
+        fileName,
+      });
+
+      await transcriptChannel.send({
+        components: [summary],
+        files: [attachment],
+        flags: V2_FLAGS,
+      });
+    }
+
+    await channel.delete(`Ticket closed: ${closeReason}`).catch(() => null);
+  } finally {
+    closing.delete(channel.id);
+  }
+}

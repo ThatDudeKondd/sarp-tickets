@@ -1,0 +1,15 @@
+{
+  "name": "config_role_set",
+  "parts": [
+    {
+      "type": "text",
+      "content": "**Set {label}**\nCurrent: {current}"
+    },
+    { "type": "separator" },
+    {
+      "type": "role_select",
+      "customId": "config:roles:set:{key}",
+      "placeholder": "Select {label}"
+    }
+  ]
+}

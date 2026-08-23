@@ -1,0 +1,22 @@
+{
+  "name": "config_roles",
+  "parts": [
+    {
+      "type": "text",
+      "content": "**Roles**\nSelect which role to update."
+    },
+    { "type": "separator" },
+    {
+      "type": "string_select",
+      "customId": "config:roles:pick",
+      "placeholder": "Which role setting?",
+      "options": [
+        { "label": "General Support Role", "value": "General_support_role", "description": "{General_support_role}" },
+        { "label": "Supervisor Support Role", "value": "Supervisor_support_role", "description": "{Supervisor_support_role}" },
+        { "label": "Panel / Config Min Role", "value": "Panel_min_role", "description": "{Panel_min_role}" },
+        { "label": "Force-Unclaim Role", "value": "Force_unclaim_role", "description": "{Force_unclaim_role}" },
+        { "label": "Blacklist Alert Role", "value": "Blacklist_Alert_Role", "description": "{Blacklist_Alert_Role}" }
+      ]
+    }
+  ]
+}

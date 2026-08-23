@@ -1,0 +1,9 @@
+{
+  "name": "close_request_denied",
+  "parts": [
+    {
+      "type": "text",
+      "content": "Close request denied."
+    }
+  ]
+}

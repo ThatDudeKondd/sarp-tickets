@@ -1,0 +1,22 @@
+{
+  "name": "config_permissions",
+  "parts": [
+    {
+      "type": "text",
+      "content": "{summary}"
+    },
+    { "type": "separator" },
+    {
+      "type": "string_select",
+      "customId": "config:permissions:pick",
+      "placeholder": "Which permission setting?",
+      "options": [
+        { "label": "Max open tickets per user", "value": "max_open_tickets", "description": "Current: {max_open_tickets}" },
+        { "label": "Inactivity checkup (hours)", "value": "inactivity_checkup_hours", "description": "Current: {inactivity_checkup_hours}" },
+        { "label": "Inactivity close (hours)", "value": "inactivity_close_hours", "description": "Current: {inactivity_close_hours}" },
+        { "label": "Anti-ping window (hours)", "value": "anti_ping_window_hours", "description": "Current: {anti_ping_window_hours}" },
+        { "label": "Close delay (seconds)", "value": "close_delay_seconds", "description": "Current: {close_delay_seconds}" }
+      ]
+    }
+  ]
+}

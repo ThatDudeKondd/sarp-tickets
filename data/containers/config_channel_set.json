@@ -1,0 +1,16 @@
+{
+  "name": "config_channel_set",
+  "parts": [
+    {
+      "type": "text",
+      "content": "**Set {label}**\nCurrent: {current}"
+    },
+    { "type": "separator" },
+    {
+      "type": "channel_select",
+      "customId": "config:channels:set:{key}",
+      "placeholder": "Select {label}",
+      "channelTypes": ["text"]
+    }
+  ]
+}

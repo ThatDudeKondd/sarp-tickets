@@ -1,0 +1,9 @@
+{
+  "name": "ping_close_reason",
+  "parts": [
+    {
+      "type": "text",
+      "content": "Repeatedly pinging staff after being punished."
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "name": "config_root",
+  "parts": [
+    {
+      "type": "text",
+      "content": "{summary}"
+    },
+    { "type": "separator" },
+    {
+      "type": "string_select",
+      "customId": "config:root",
+      "placeholder": "Choose a settings category",
+      "options": [
+        {
+          "label": "Channels",
+          "value": "channels",
+          "description": "Assistance, transcript, categories"
+        },
+        {
+          "label": "Roles",
+          "value": "roles",
+          "description": "Support, panel, and force-unclaim roles"
+        },
+        {
+          "label": "Permissions",
+          "value": "permissions",
+          "description": "Limits, timers, delays"
+        },
+        {
+          "label": "Auto-Replies",
+          "value": "auto_replies",
+          "description": "Bot messages and close reasons"
+        }
+      ]
+    }
+  ]
+}

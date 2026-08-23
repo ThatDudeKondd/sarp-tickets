@@ -1,0 +1,9 @@
+{
+  "name": "inactivity_close_reason",
+  "parts": [
+    {
+      "type": "text",
+      "content": "Closed due to inactivity."
+    }
+  ]
+}

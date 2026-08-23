@@ -1,0 +1,41 @@
+{
+  "name": "ticket",
+  "parts": [
+    { "type": "banner" },
+    { "type": "separator" },
+    {
+      "type": "text",
+      "content": "-# cc: {openerMention} | {teamRoleMention}\n**User information:**\nRoblox user: {robloxDisplay}\nCreated at: {robloxCreatedAt}\n-----\nDiscord user: {discordDisplay}\nCreated at: {discordCreatedAt}\n-----\n**Ticket information:**\nReason: {reason}\nTicket ID: {ticketId}\nCurrent tickets: {openCount}{etaLine}"
+    },
+    { "type": "separator" },
+    {
+      "type": "buttons",
+      "buttons": [
+        {
+          "customId": "ticket:claim",
+          "label": "Claim",
+          "style": "Success",
+          "whenNot": "claimed"
+        },
+        {
+          "customId": "ticket:unclaim",
+          "label": "Unclaim",
+          "style": "Danger",
+          "when": "claimed"
+        },
+        {
+          "customId": "ticket:close",
+          "label": "Close",
+          "style": "Danger"
+        },
+        {
+          "customId": "ticket:close:reason",
+          "label": "Close with reason",
+          "style": "Danger"
+        }
+      ]
+    },
+    { "type": "separator" },
+    { "type": "footer" }
+  ]
+}
