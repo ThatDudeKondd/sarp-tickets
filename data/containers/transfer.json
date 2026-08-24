@@ -1,0 +1,9 @@
+{
+  "name": "transfer",
+  "parts": [
+    {
+      "type": "text",
+      "content": "Ticket transferred from {from} to {to}."
+    }
+  ]
+}

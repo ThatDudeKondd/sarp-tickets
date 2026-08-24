@@ -1,0 +1,9 @@
+{
+  "name": "leave_close_reason",
+  "parts": [
+    {
+      "type": "text",
+      "content": "User left the server."
+    }
+  ]
+}

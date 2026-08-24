@@ -1,0 +1,9 @@
+{
+  "name": "force_unclaim",
+  "parts": [
+    {
+      "type": "text",
+      "content": "This ticket has been force-unclaimed by {user}."
+    }
+  ]
+}

@@ -1,0 +1,68 @@
+import {
+  Client,
+  Events,
+  GatewayIntentBits,
+  Partials,
+  REST,
+  Routes,
+} from 'discord.js';
+import { env } from './config';
+import './db';
+import { slashCommands } from './commands/slash';
+import { handleInteraction } from './events/interactions';
+import { handleMessageCreate } from './events/messages';
+import { closeOpenTicketsForUser } from './services/tickets';
+import { startInactivityScheduler } from './services/inactivity';
+import { startPanelScheduler } from './services/panelSchedule';
+import { getAutoReplyText } from './components/builders';
+
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildModeration,
+  ],
+  partials: [Partials.Channel, Partials.Message, Partials.GuildMember],
+});
+
+client.once(Events.ClientReady, async (c) => {
+  console.log(`Logged in as ${c.user.tag}`);
+  try {
+    const rest = new REST({ version: '10' }).setToken(env.token);
+    for (const guild of c.guilds.cache.values()) {
+      await rest.put(Routes.applicationGuildCommands(env.clientId, guild.id), {
+        body: slashCommands,
+      });
+    }
+    console.log('Slash commands deployed.');
+  } catch (err) {
+    console.error('Failed to deploy slash commands:', err);
+  }
+  startInactivityScheduler(c);
+  startPanelScheduler(c);
+});
+
+client.on(Events.InteractionCreate, (interaction) => {
+  void handleInteraction(interaction).catch((err) => {
+    console.error('Interaction error:', err);
+    if (interaction.isRepliable() && !interaction.replied && !interaction.deferred) {
+      void interaction.reply({ content: 'Something went wrong.', ephemeral: true }).catch(() => null);
+    }
+  });
+});
+
+client.on(Events.MessageCreate, (message) => {
+  void handleMessageCreate(message).catch((err) => console.error('Message error:', err));
+});
+
+client.on(Events.GuildMemberRemove, (member) => {
+  void closeOpenTicketsForUser(
+    client,
+    member.id,
+    getAutoReplyText('leave_close_reason'),
+  ).catch((err) => console.error('Leave-close error:', err));
+});
+
+void client.login(env.token);

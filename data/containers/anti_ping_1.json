@@ -1,0 +1,9 @@
+{
+  "name": "anti_ping_1",
+  "parts": [
+    {
+      "type": "text",
+      "content": "Please do not ping staff in tickets within 24 hours of opening (unless the ticket is claimed — then you may ping the claimant only). This is your first warning."
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+    "banner": "",
+    "footer": "",
+    "Assistance_Channel": "1532554337048465408",
+    "Transcript_Channel": "1541100388630011965",
+    "Blacklist_Alert_Channel": "1532512356708651038",
+    "Command_Log_Channel": "1538980774114492496",
+    "General_support_role": "1541119196853706872",
+    "Supervisor_support_role": "1529230785813545001",
+    "General_category": "1541123791521058837",
+    "Supervisor_category": "1541123853521256508",
+    "Panel_min_role": "1529230390693462156",
+    "Force_unclaim_role": "1529230627780690130",
+    "Blacklist_Alert_Role": "1529230390693462156",
+    "permissions": {
+        "max_open_tickets": 3,
+        "inactivity_checkup_hours": 24,
+        "inactivity_close_hours": 48,
+        "anti_ping_window_hours": 24,
+        "close_delay_seconds": 3
+    }
+}

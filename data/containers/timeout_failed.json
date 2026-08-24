@@ -1,0 +1,9 @@
+{
+  "name": "timeout_failed",
+  "parts": [
+    {
+      "type": "text",
+      "content": "Well, I would mute you for {reason}, but you are a higher role than me."
+    }
+  ]
+}

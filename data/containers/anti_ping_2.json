@@ -1,0 +1,9 @@
+{
+  "name": "anti_ping_2",
+  "parts": [
+    {
+      "type": "text",
+      "content": "Please stop pinging staff. This is your second warning. Another offence will result in a timeout."
+    }
+  ]
+}

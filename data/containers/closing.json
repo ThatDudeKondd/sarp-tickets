@@ -1,0 +1,9 @@
+{
+  "name": "closing",
+  "parts": [
+    {
+      "type": "text",
+      "content": "Closing ticket in {seconds} seconds…"
+    }
+  ]
+}

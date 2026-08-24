@@ -1,0 +1,9 @@
+{
+  "name": "timeout",
+  "parts": [
+    {
+      "type": "text",
+      "content": "{user} has been timed out for {hours}h for pinging staff."
+    }
+  ]
+}

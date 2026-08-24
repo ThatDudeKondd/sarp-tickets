@@ -1,0 +1,31 @@
+{
+  "name": "panel",
+  "parts": [
+    { "type": "banner" },
+    { "type": "separator" },
+    {
+      "type": "text",
+      "content": "Please choose from the following:\n\n### General Support\n  * Asking a general question\n  * Asking about in-game rules\n\n### Supervisory Support\n  * Staff fastpass/transfers\n  * Reporting a member"
+    },
+    { "type": "separator" },
+    {
+      "type": "string_select",
+      "customId": "ticket:select",
+      "placeholder": "Select a ticket type",
+      "options": [
+        {
+          "label": "General Support",
+          "value": "general",
+          "description": "General questions and in-game rules"
+        },
+        {
+          "label": "Supervisory Support",
+          "value": "supervisor",
+          "description": "Fastpass/transfers and member reports"
+        }
+      ]
+    },
+    { "type": "separator" },
+    { "type": "footer" }
+  ]
+}

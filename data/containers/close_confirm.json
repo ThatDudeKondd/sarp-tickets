@@ -1,0 +1,20 @@
+{
+  "name": "close_confirm",
+  "parts": [
+    {
+      "type": "text",
+      "content": "**Close confirmation**\nAre you sure you want to close this ticket?"
+    },
+    { "type": "separator" },
+    {
+      "type": "buttons",
+      "buttons": [
+        {
+          "customId": "ticket:close:confirm",
+          "label": "Confirm",
+          "style": "Danger"
+        }
+      ]
+    }
+  ]
+}

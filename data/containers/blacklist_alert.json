@@ -1,0 +1,9 @@
+{
+  "name": "blacklist_alert",
+  "parts": [
+    {
+      "type": "text",
+      "content": "Hey {alertRoleMention}, a new user has been blacklisted:\nUser: {username} ({userId})\nReason: {reason}\nWhen: {when}"
+    }
+  ]
+}

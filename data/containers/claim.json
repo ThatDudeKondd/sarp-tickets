@@ -1,0 +1,9 @@
+{
+  "name": "claim",
+  "parts": [
+    {
+      "type": "text",
+      "content": "{staff} has claimed the ticket."
+    }
+  ]
+}

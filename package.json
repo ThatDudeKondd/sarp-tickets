@@ -1,0 +1,25 @@
+{
+  "name": "sarp-tickets-bot",
+  "version": "1.0.0",
+  "description": "SARP Discord ticket bot",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node --experimental-sqlite dist/index.js",
+    "dev": "node --experimental-sqlite --import tsx src/index.ts",
+    "deploy": "node --experimental-sqlite --import tsx src/deploy-commands.ts"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "discord-html-transcripts": "^3.2.0",
+    "discord.js": "^14.22.1",
+    "dotenv": "^16.4.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  }
+}

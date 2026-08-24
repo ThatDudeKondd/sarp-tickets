@@ -1,0 +1,9 @@
+{
+  "name": "checkup",
+  "parts": [
+    {
+      "type": "text",
+      "content": "Hey {opener}, {staff}, this ticket is becoming inactive. If you still need help, please reply now, or this will be closed."
+    }
+  ]
+}

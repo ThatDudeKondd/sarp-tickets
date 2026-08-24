@@ -1,0 +1,9 @@
+{
+  "name": "command_log",
+  "parts": [
+    {
+      "type": "text",
+      "content": "**Command Executed**\n\n**Command**\n`{command}`\n\n**User**\n{userMention} (`{userId}`)\n\n**Channel**\n{channelMention}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "name": "config_channels",
+  "parts": [
+    {
+      "type": "text",
+      "content": "**Channels**\nSelect which channel/category to update."
+    },
+    { "type": "separator" },
+    {
+      "type": "string_select",
+      "customId": "config:channels:pick",
+      "placeholder": "Which channel setting?",
+      "options": [
+        { "label": "Assistance Channel", "value": "Assistance_Channel", "description": "{Assistance_Channel}" },
+        { "label": "Transcript Channel", "value": "Transcript_Channel", "description": "{Transcript_Channel}" },
+        { "label": "Blacklist Alert Channel", "value": "Blacklist_Alert_Channel", "description": "{Blacklist_Alert_Channel}" },
+        { "label": "General Category", "value": "General_category", "description": "{General_category}" },
+        { "label": "Supervisor Category", "value": "Supervisor_category", "description": "{Supervisor_category}" }
+      ]
+    }
+  ]
+}
