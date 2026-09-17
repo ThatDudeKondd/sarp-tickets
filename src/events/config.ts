@@ -34,6 +34,7 @@ import {
 } from '../components/configPanel';
 import { getContainerText, setContainerText } from '../components/containerStore';
 import { canManagePanel } from '../utils/permissions';
+import { logPrefixCommand } from '../services/commandLog';
 
 export async function handleConfigPrefix(message: Message): Promise<boolean> {
   if (message.content.trim().toLowerCase() !== '-config') return false;
@@ -52,6 +53,7 @@ export async function handleConfigPrefix(message: Message): Promise<boolean> {
     components: [buildConfigRoot()],
     flags: V2_FLAGS,
   });
+  void logPrefixCommand(message, '-config');
   return true;
 }
 

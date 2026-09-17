@@ -1,9 +1,10 @@
 {
-    "banner": "https://cdn.discordapp.com/attachments/1541123124794360069/1541123317329563729/PlaceHolder_banner.png",
-    "footer": "https://cdn.discordapp.com/attachments/1541123124794360069/1541123329799229480/Placeholder_footer.png",
+    "banner": "",
+    "footer": "",
     "Assistance_Channel": "1532554337048465408",
     "Transcript_Channel": "1541100388630011965",
     "Blacklist_Alert_Channel": "1532512356708651038",
+    "Command_Log_Channel": "1538980774114492496",
     "General_support_role": "1541119196853706872",
     "Supervisor_support_role": "1529230785813545001",
     "General_category": "1541123791521058837",

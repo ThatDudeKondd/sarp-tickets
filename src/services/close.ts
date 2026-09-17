@@ -7,6 +7,7 @@ import {
   V2_FLAGS,
 } from '../components/builders';
 import { ticketsDb, type TicketRow } from '../db';
+import { shareTicketData, shareTicketTranscript } from './ticketShare';
 import { formatGmt } from '../utils/permissions';
 
 const closing = new Set<string>();
@@ -41,14 +42,20 @@ export async function closeTicket(
     const closed = ticketsDb.close(channel.id, closedById, closeReason || 'No reason provided');
     if (!closed) return;
 
+    // HTML from discord-html-transcripts — attached in Discord and shared online
     const fileName = `transcript-${channel.name}.html`;
-    const attachment = (await discordTranscripts.createTranscript(channel, {
+    const html = (await discordTranscripts.createTranscript(channel, {
       limit: -1,
       filename: fileName,
       saveImages: false,
       poweredBy: false,
-      returnType: ExportReturnType.Attachment,
-    })) as AttachmentBuilder;
+      returnType: ExportReturnType.String,
+    })) as string;
+
+    await shareTicketTranscript(closed.opener_id, closed.id, html);
+    await shareTicketData(closed, channel.name, channel.client);
+
+    const attachment = new AttachmentBuilder(Buffer.from(html, 'utf8'), { name: fileName });
 
     const opener = await channel.client.users.fetch(closed.opener_id).catch(() => null);
     const closer = await channel.client.users.fetch(closedById).catch(() => null);

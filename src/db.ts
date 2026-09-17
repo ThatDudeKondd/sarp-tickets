@@ -202,6 +202,12 @@ export const ticketsDb = {
       .all(openerId) as unknown as TicketRow[];
   },
 
+  getAllByOpener(openerId: string): TicketRow[] {
+    return db
+      .prepare(`SELECT * FROM tickets WHERE opener_id = ? ORDER BY opened_at DESC`)
+      .all(openerId) as unknown as TicketRow[];
+  },
+
   countOpenByOpener(openerId: string): number {
     const row = db
       .prepare(`SELECT COUNT(*) AS c FROM tickets WHERE opener_id = ? AND status = 'open'`)

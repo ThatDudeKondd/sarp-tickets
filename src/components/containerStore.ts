@@ -73,9 +73,11 @@ export interface ContainerRoleSelectPart {
 }
 
 export interface ContainerButtonDef {
-  customId: string;
+  customId?: string;
   label: string;
   style: ButtonStyleName;
+  /** For Link buttons — opens this URL. */
+  url?: string;
   /** Include only when `vars[when]` is truthy (`"true"` or non-empty). Omit to always show. */
   when?: string;
   /** Include only when `vars[whenNot]` is falsy. */
@@ -183,18 +185,22 @@ export function buildContainerFromDef(
   for (const part of def.parts) {
     switch (part.type) {
       case 'banner':
-        container.addMediaGalleryComponents(
-          new MediaGalleryBuilder().addItems(
-            new MediaGalleryItemBuilder().setURL(config.banner),
-          ),
-        );
+        if (config.banner) {
+          container.addMediaGalleryComponents(
+            new MediaGalleryBuilder().addItems(
+              new MediaGalleryItemBuilder().setURL(config.banner),
+            ),
+          );
+        }
         break;
       case 'footer':
-        container.addMediaGalleryComponents(
-          new MediaGalleryBuilder().addItems(
-            new MediaGalleryItemBuilder().setURL(config.footer),
-          ),
-        );
+        if (config.footer) {
+          container.addMediaGalleryComponents(
+            new MediaGalleryBuilder().addItems(
+              new MediaGalleryItemBuilder().setURL(config.footer),
+            ),
+          );
+        }
         break;
       case 'separator':
         container.addSeparatorComponents(
@@ -260,12 +266,18 @@ export function buildContainerFromDef(
         for (const b of part.buttons) {
           if (b.when && !truthy(vars[b.when])) continue;
           if (b.whenNot && truthy(vars[b.whenNot])) continue;
-          buttons.push(
-            new ButtonBuilder()
-              .setCustomId(applyPlaceholders(b.customId, vars))
-              .setLabel(applyPlaceholders(b.label, vars))
-              .setStyle(STYLE_MAP[b.style] ?? ButtonStyle.Secondary),
-          );
+          const style = STYLE_MAP[b.style] ?? ButtonStyle.Secondary;
+          const btn = new ButtonBuilder()
+            .setLabel(applyPlaceholders(b.label, vars))
+            .setStyle(style);
+          if (style === ButtonStyle.Link) {
+            const url = applyPlaceholders(b.url ?? '', vars);
+            if (!url) continue;
+            btn.setURL(url);
+          } else {
+            btn.setCustomId(applyPlaceholders(b.customId ?? 'button', vars));
+          }
+          buttons.push(btn);
         }
         if (buttons.length) {
           container.addActionRowComponents(

@@ -33,6 +33,8 @@ import {
 import { closeTicket, isClosing } from '../services/close';
 import { blacklistUser } from '../services/blacklist';
 import { refreshAssistancePanel } from '../services/panelSchedule';
+import { shareTicketDataFireAndForget } from '../services/ticketShare';
+import { logPrefixCommand, logSlashCommand } from '../services/commandLog';
 import { handleConfigInteraction, handleConfigPrefix } from './config';
 
 export async function handlePrefixCommand(message: Message): Promise<void> {
@@ -51,6 +53,7 @@ export async function handlePrefixCommand(message: Message): Promise<void> {
     await message.reply(
       'Ticket panel refreshed. The Assistance channel now contains a single panel message.',
     );
+    void logPrefixCommand(message, '-panel tickets');
     return;
   }
 
@@ -64,6 +67,7 @@ export async function handlePrefixCommand(message: Message): Promise<void> {
     if (blacklistDb.isBlacklisted(userId)) {
       blacklistDb.remove(userId);
       await message.reply(`Removed <@${userId}> from the ticket blacklist.`);
+      void logPrefixCommand(message, `-tickets blacklist ${userId}`);
       return;
     }
     const user = await message.client.users.fetch(userId).catch(() => null);
@@ -71,6 +75,7 @@ export async function handlePrefixCommand(message: Message): Promise<void> {
       username: user?.username,
     });
     await message.reply(`Blacklisted <@${userId}> from tickets.`);
+    void logPrefixCommand(message, `-tickets blacklist ${userId}`);
   }
 }
 
@@ -107,6 +112,7 @@ export async function handleInteraction(interaction: Interaction): Promise<void>
   }
 
   if (interaction.isChatInputCommand()) {
+    void logSlashCommand(interaction);
     await onSlash(interaction);
   }
 }
@@ -426,6 +432,8 @@ async function onSlash(interaction: ChatInputCommandInteraction): Promise<void> 
           return;
         }
         const updated = await ctx.channel.setName(name);
+        const fresh = ticketsDb.getByChannel(ctx.channel.id) ?? ticket;
+        shareTicketDataFireAndForget(fresh, updated.name, interaction.client);
         await interaction.editReply(
           `Renamed to \`${updated.name}\`.` +
             (input.includes(':') && updated.name !== input

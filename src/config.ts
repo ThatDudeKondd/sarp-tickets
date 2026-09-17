@@ -18,6 +18,7 @@ export interface BotConfig {
   Assistance_Channel: string;
   Transcript_Channel: string;
   Blacklist_Alert_Channel: string;
+  Command_Log_Channel: string;
   General_support_role: string;
   Supervisor_support_role: string;
   General_category: string;
@@ -49,13 +50,16 @@ function loadRaw(): BotConfig {
   const perms = { ...DEFAULT_PERMISSIONS, ...((raw.permissions as object) ?? {}) };
 
   return {
-    banner: req(raw, 'banner'),
-    footer: req(raw, 'footer'),
+    banner: String(raw.banner ?? '').trim(),
+    footer: String(raw.footer ?? '').trim(),
     Assistance_Channel: req(raw, 'Assistance_Channel'),
     Transcript_Channel: req(raw, 'Transcript_Channel'),
     Blacklist_Alert_Channel:
       String(raw.Blacklist_Alert_Channel ?? '1532512356708651038').trim() ||
       '1532512356708651038',
+    Command_Log_Channel:
+      String(raw.Command_Log_Channel ?? '1538980774114492496').trim() ||
+      '1538980774114492496',
     General_support_role: req(raw, 'General_support_role'),
     Supervisor_support_role: req(raw, 'Supervisor_support_role'),
     General_category: req(raw, 'General_category'),
@@ -100,6 +104,8 @@ export const env = {
   token: process.env.SARP_TICKETS_BOT_TOKEN?.replace(/^"|"$/g, '') ?? '',
   clientId: process.env.SARP_TICKETS_CLIENT_ID?.trim() ?? '',
   bloxlinkApiKey: process.env.BLOXLINK_API_KEY?.trim() ?? '',
+  /** Public site origin for ticket/transcript sharing (no trailing slash). */
+  domain: (process.env.DOMAIN ?? 'http://127.0.0.1:3000').replace(/\/$/, ''),
 };
 
 if (!env.token) throw new Error('Missing SARP_TICKETS_BOT_TOKEN');
