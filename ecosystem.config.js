@@ -9,6 +9,7 @@ module.exports = {
       max_restarts: 10,
       restart_delay: 5000,
       kill_timeout: 15000, // matches the old systemd unit's TimeoutStopSec, gives shutdown() time to disconnect the DB
+      max_memory_restart: '1.5G'
     },
   ],
 };
