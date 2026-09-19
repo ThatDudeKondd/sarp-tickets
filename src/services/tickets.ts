@@ -62,7 +62,8 @@ async function buildControl(ticket: TicketRow, guild: Guild) {
   const discordUsername = opener?.user.username ?? ticket.opener_id;
   const discordDisplay = `${discordUsername} (${ticket.opener_id})`;
   const discordCreatedUnix = Math.floor(discordCreatedAt(ticket.opener_id).getTime() / 1000);
-  const etaAvg = etaDb.averageMs();
+  const etaAvg = await etaDb.averageMs();
+  const openCount = await ticketsDb.countOpenByOpener(ticket.opener_id);
 
   return buildTicketControlContainer({
     openerId: ticket.opener_id,
@@ -73,7 +74,7 @@ async function buildControl(ticket: TicketRow, guild: Guild) {
     discordCreatedAt: relativeTimestamp(discordCreatedUnix),
     reason: ticket.reason,
     ticketId: ticket.id,
-    openCount: ticketsDb.countOpenByOpener(ticket.opener_id),
+    openCount,
     etaText: etaAvg !== null ? formatDuration(etaAvg) : null,
     claimedBy: ticket.claimed_by,
   });
@@ -97,11 +98,11 @@ export async function createTicket(opts: {
 }): Promise<{ ok: true; channel: TextChannel; ticket: TicketRow } | { ok: false; error: string }> {
   const { guild, opener, reason } = opts;
 
-  if (blacklistDb.isBlacklisted(opener.id)) {
+  if (await blacklistDb.isBlacklisted(opener.id)) {
     return { ok: false, error: 'You are blacklisted from opening tickets.' };
   }
 
-  if (ticketsDb.countOpenByOpener(opener.id) >= maxOpenTickets()) {
+  if ((await ticketsDb.countOpenByOpener(opener.id)) >= maxOpenTickets()) {
     return { ok: false, error: `You already have ${maxOpenTickets()} open tickets.` };
   }
 
@@ -135,7 +136,7 @@ export async function createTicket(opts: {
     ],
   });
 
-  const ticket = ticketsDb.create({
+  const ticket = await ticketsDb.create({
     channel_id: channel.id,
     guild_id: guild.id,
     opener_id: opener.id,
@@ -150,9 +151,9 @@ export async function createTicket(opts: {
     flags: V2_FLAGS,
     allowedMentions: { users: [opener.id], roles: [teamRoleId] },
   });
-  ticketsDb.setControlMessage(channel.id, msg.id);
+  await ticketsDb.setControlMessage(channel.id, msg.id);
 
-  const shared = ticketsDb.getByChannel(channel.id) ?? ticket;
+  const shared = (await ticketsDb.getByChannel(channel.id)) ?? ticket;
   shareTicketDataFireAndForget(shared, channel.name, guild.client);
 
   return { ok: true, channel, ticket: shared };
@@ -172,8 +173,8 @@ export async function claimTicket(
     return { ok: false, error: 'You do not have the required role to claim this ticket.' };
   }
 
-  ticketsDb.recordClaim(ticket, member.id, 'claim');
-  const updated = ticketsDb.getByChannel(channel.id) ?? { ...ticket, claimed_by: member.id };
+  await ticketsDb.recordClaim(ticket, member.id, 'claim');
+  const updated = (await ticketsDb.getByChannel(channel.id)) ?? { ...ticket, claimed_by: member.id };
   await refreshControlMessage(channel, updated);
   await channel.send({
     components: [buildClaimNotice(member.id)],
@@ -190,16 +191,16 @@ export async function unclaimTicket(
   channel: TextChannel,
   opts?: { force?: boolean },
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const fresh = ticketsDb.getByChannel(channel.id) ?? ticket;
+  const fresh = (await ticketsDb.getByChannel(channel.id)) ?? ticket;
   if (fresh.status !== 'open') return { ok: false, error: 'This ticket is closed.' };
   if (!fresh.claimed_by) return { ok: false, error: 'This ticket is not claimed.' };
 
-  ticketsDb.recordUnclaim(
+  await ticketsDb.recordUnclaim(
     fresh,
     member.id,
     opts?.force ? 'force_unclaim' : 'unclaim',
   );
-  const updated = ticketsDb.getByChannel(channel.id) ?? { ...fresh, claimed_by: null };
+  const updated = (await ticketsDb.getByChannel(channel.id)) ?? { ...fresh, claimed_by: null };
   await refreshControlMessage(channel, updated);
   await channel.send({
     components: [
@@ -220,7 +221,7 @@ export async function transferTicket(
   from: GuildMember,
   to: GuildMember,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const fresh = ticketsDb.getByChannel(channel.id) ?? ticket;
+  const fresh = (await ticketsDb.getByChannel(channel.id)) ?? ticket;
   if (!fresh.claimed_by) return { ok: false, error: 'Ticket must be claimed before transferring.' };
   if (fresh.claimed_by !== from.id) return { ok: false, error: 'Only the claimant can transfer.' };
   const canReceive =
@@ -228,11 +229,11 @@ export async function transferTicket(
     to.roles.cache.has(getConfig().Supervisor_support_role);
   if (!canReceive) return { ok: false, error: 'Target must have a support role.' };
 
-  ticketsDb.recordUnclaim(fresh, from.id, 'transfer_out');
-  const afterOut = ticketsDb.getByChannel(channel.id) ?? { ...fresh, claimed_by: null };
-  ticketsDb.recordClaim(afterOut, to.id, 'transfer_in');
+  await ticketsDb.recordUnclaim(fresh, from.id, 'transfer_out');
+  const afterOut = (await ticketsDb.getByChannel(channel.id)) ?? { ...fresh, claimed_by: null };
+  await ticketsDb.recordClaim(afterOut, to.id, 'transfer_in');
   await channel.permissionOverwrites.edit(to.id, { ...TICKET_OVERWRITES });
-  const updated = ticketsDb.getByChannel(channel.id) ?? { ...fresh, claimed_by: to.id };
+  const updated = (await ticketsDb.getByChannel(channel.id)) ?? { ...fresh, claimed_by: to.id };
   await refreshControlMessage(channel, updated);
   await channel.send({
     components: [buildTransferNotice(from.id, to.id)],
@@ -250,17 +251,17 @@ export async function switchPanel(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   if (ticket.type === newType) return { ok: false, error: 'Ticket is already that type.' };
 
-  const fresh = ticketsDb.getByChannel(channel.id) ?? ticket;
+  const fresh = (await ticketsDb.getByChannel(channel.id)) ?? ticket;
   const oldRole = supportRoleForType(fresh.type);
   const newRole = supportRoleForType(newType);
   await channel.setParent(categoryForType(newType), { lockPermissions: false });
   await channel.permissionOverwrites.delete(oldRole).catch(() => null);
   await channel.permissionOverwrites.edit(newRole, { ...TICKET_OVERWRITES });
   if (fresh.claimed_by) {
-    ticketsDb.recordUnclaim(fresh, fresh.claimed_by, 'switchpanel');
+    await ticketsDb.recordUnclaim(fresh, fresh.claimed_by, 'switchpanel');
   }
-  ticketsDb.setType(channel.id, newType);
-  const updated = ticketsDb.getByChannel(channel.id) ?? {
+  await ticketsDb.setType(channel.id, newType);
+  const updated = (await ticketsDb.getByChannel(channel.id)) ?? {
     ...fresh,
     type: newType,
     claimed_by: null,
@@ -294,7 +295,7 @@ export async function closeOpenTicketsForUser(
   userId: string,
   reason: string,
 ): Promise<void> {
-  const open = ticketsDb.getOpenByOpener(userId);
+  const open = await ticketsDb.getOpenByOpener(userId);
   for (const ticket of open) {
     const channel = await client.channels.fetch(ticket.channel_id).catch(() => null);
     if (channel?.isTextBased() && 'guild' in channel) {

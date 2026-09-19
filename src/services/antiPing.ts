@@ -62,7 +62,7 @@ export async function handleAntiPing(
   if (!messagePingsStaff(message, ticket)) return false;
   if (isAllowedClaimantPing(message, ticket)) return false;
 
-  const state = antiPingDb.get(member.id);
+  const state = await antiPingDb.get(member.id);
   const now = Date.now();
 
   if (state.last_offence_at && now - state.last_offence_at > 12 * 60 * 60 * 1000) {
@@ -75,7 +75,7 @@ export async function handleAntiPing(
   const channel = message.channel as TextChannel;
 
   if (state.offence_count === 1) {
-    antiPingDb.save(state);
+    await antiPingDb.save(state);
     await channel.send({
       components: [buildAntiPingWarning(1)],
       flags: V2_FLAGS,
@@ -84,7 +84,7 @@ export async function handleAntiPing(
   }
 
   if (state.offence_count === 2) {
-    antiPingDb.save(state);
+    await antiPingDb.save(state);
     await channel.send({
       components: [buildAntiPingWarning(2)],
       flags: V2_FLAGS,
@@ -101,7 +101,7 @@ export async function handleAntiPing(
       durationMs = 60 * 60 * 1000;
     } else {
       state.offence_count = 1;
-      antiPingDb.save(state);
+      await antiPingDb.save(state);
       await channel.send({
         components: [buildAntiPingWarning(1)],
         flags: V2_FLAGS,
@@ -112,7 +112,7 @@ export async function handleAntiPing(
 
   const reason = 'pinging staff';
   if (!member.moderatable) {
-    antiPingDb.save(state);
+    await antiPingDb.save(state);
     await channel.send({
       components: [buildTimeoutFailedNotice(reason)],
       flags: V2_FLAGS,
@@ -124,7 +124,7 @@ export async function handleAntiPing(
   state.last_mute_at = now;
   state.last_unmute_at = now + durationMs;
   state.auto_timeout_count += 1;
-  antiPingDb.save(state);
+  await antiPingDb.save(state);
 
   await member.timeout(durationMs, `Ticket anti-ping: ${reason}`);
 

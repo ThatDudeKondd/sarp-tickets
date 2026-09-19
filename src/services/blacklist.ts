@@ -9,9 +9,9 @@ export async function blacklistUser(
   reason: string,
   opts?: { username?: string; alert?: boolean },
 ): Promise<'added' | 'already'> {
-  if (blacklistDb.isBlacklisted(userId)) return 'already';
+  if (await blacklistDb.isBlacklisted(userId)) return 'already';
 
-  blacklistDb.add(userId, reason);
+  await blacklistDb.add(userId, reason);
 
   if (opts?.alert !== false) {
     await sendBlacklistAlert(client, userId, reason, opts?.username);

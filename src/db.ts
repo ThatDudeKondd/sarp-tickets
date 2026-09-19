@@ -1,130 +1,11 @@
-import { DatabaseSync } from 'node:sqlite';
-import fs from 'node:fs';
-import path from 'node:path';
+import { prisma } from './database/client';
 import { ETA_MIN_SAMPLES, type TicketType } from './config';
 
-const dataDir = path.join(process.cwd(), 'data');
-if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
-
-export const db = new DatabaseSync(path.join(dataDir, 'tickets.sqlite'));
-db.exec('PRAGMA journal_mode = WAL');
-db.exec('PRAGMA foreign_keys = ON');
-
-db.exec(`
-CREATE TABLE IF NOT EXISTS tickets (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  channel_id TEXT NOT NULL UNIQUE,
-  guild_id TEXT NOT NULL,
-  opener_id TEXT NOT NULL,
-  type TEXT NOT NULL CHECK(type IN ('general', 'supervisor')),
-  reason TEXT NOT NULL,
-  claimed_by TEXT,
-  status TEXT NOT NULL DEFAULT 'open' CHECK(status IN ('open', 'closed')),
-  opened_at INTEGER NOT NULL,
-  closed_at INTEGER,
-  close_reason TEXT,
-  closed_by TEXT,
-  last_message_at INTEGER NOT NULL,
-  checkup_sent INTEGER NOT NULL DEFAULT 0,
-  last_staff_speaker_id TEXT,
-  pending_member_message_at INTEGER,
-  control_message_id TEXT,
-  times_claimed INTEGER NOT NULL DEFAULT 0,
-  first_claimed_by TEXT,
-  last_claimed_by TEXT
-);
-
-CREATE TABLE IF NOT EXISTS blacklist (
-  user_id TEXT PRIMARY KEY,
-  created_at INTEGER NOT NULL,
-  reason TEXT
-);
-
-CREATE TABLE IF NOT EXISTS meta (
-  key TEXT PRIMARY KEY,
-  value TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS response_samples (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  ticket_id INTEGER NOT NULL,
-  delay_ms INTEGER NOT NULL,
-  recorded_at INTEGER NOT NULL,
-  FOREIGN KEY (ticket_id) REFERENCES tickets(id)
-);
-
-CREATE TABLE IF NOT EXISTS anti_ping (
-  user_id TEXT PRIMARY KEY,
-  offence_count INTEGER NOT NULL DEFAULT 0,
-  auto_timeout_count INTEGER NOT NULL DEFAULT 0,
-  last_mute_at INTEGER,
-  last_unmute_at INTEGER,
-  last_offence_at INTEGER
-);
-
-CREATE TABLE IF NOT EXISTS claim_stats (
-  user_id TEXT NOT NULL,
-  type TEXT NOT NULL CHECK(type IN ('general', 'supervisor')),
-  claims INTEGER NOT NULL DEFAULT 0,
-  PRIMARY KEY (user_id, type)
-);
-
-CREATE TABLE IF NOT EXISTS claim_history (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  ticket_id INTEGER NOT NULL,
-  channel_id TEXT NOT NULL,
-  staff_id TEXT NOT NULL,
-  type TEXT NOT NULL CHECK(type IN ('general', 'supervisor')),
-  action TEXT NOT NULL,
-  at INTEGER NOT NULL,
-  meta TEXT,
-  FOREIGN KEY (ticket_id) REFERENCES tickets(id)
-);
-
-CREATE TABLE IF NOT EXISTS ticket_type_stats (
-  type TEXT PRIMARY KEY CHECK(type IN ('general', 'supervisor')),
-  opened INTEGER NOT NULL DEFAULT 0,
-  closed INTEGER NOT NULL DEFAULT 0
-);
-`);
-
-// Schema migrations for databases created before these columns existed.
-try {
-  db.exec('ALTER TABLE blacklist ADD COLUMN reason TEXT');
-} catch {
-  /* column already present */
-}
-try {
-  db.exec('ALTER TABLE tickets ADD COLUMN times_claimed INTEGER NOT NULL DEFAULT 0');
-} catch {
-  /* column already present */
-}
-try {
-  db.exec('ALTER TABLE tickets ADD COLUMN first_claimed_by TEXT');
-} catch {
-  /* column already present */
-}
-try {
-  db.exec('ALTER TABLE tickets ADD COLUMN last_claimed_by TEXT');
-} catch {
-  /* column already present */
-}
-
-// Backfill type counters from existing tickets when the stats table is empty.
-{
-  const row = db.prepare('SELECT COUNT(*) AS c FROM ticket_type_stats').get() as { c: number };
-  if (row.c === 0) {
-    db.prepare(
-      `INSERT INTO ticket_type_stats (type, opened, closed)
-       SELECT type, COUNT(*), SUM(CASE WHEN status = 'closed' THEN 1 ELSE 0 END)
-       FROM tickets GROUP BY type`,
-    ).run();
-    for (const t of ['general', 'supervisor'] as const) {
-      db.prepare(
-        `INSERT OR IGNORE INTO ticket_type_stats (type, opened, closed) VALUES (?, 0, 0)`,
-      ).run(t);
-    }
-  }
+// Prisma stores epoch-ms timestamps as BigInt (Postgres int4 overflows at ~2^31,
+// well below current epoch ms). Converted to number at this boundary so every
+// caller keeps using plain numbers, same as when this was better-sqlite3/node:sqlite.
+function n(v: bigint | null): number | null {
+  return v === null ? null : Number(v);
 }
 
 export interface TicketRow {
@@ -159,94 +40,142 @@ export interface AntiPingRow {
   last_offence_at: number | null;
 }
 
+function toTicketRow(row: {
+  id: number;
+  channel_id: string;
+  guild_id: string;
+  opener_id: string;
+  type: string;
+  reason: string;
+  claimed_by: string | null;
+  status: string;
+  opened_at: bigint;
+  closed_at: bigint | null;
+  close_reason: string | null;
+  closed_by: string | null;
+  last_message_at: bigint;
+  checkup_sent: number;
+  last_staff_speaker_id: string | null;
+  pending_member_message_at: bigint | null;
+  control_message_id: string | null;
+  times_claimed: number;
+  first_claimed_by: string | null;
+  last_claimed_by: string | null;
+}): TicketRow {
+  return {
+    ...row,
+    type: row.type as TicketType,
+    status: row.status as 'open' | 'closed',
+    opened_at: Number(row.opened_at),
+    closed_at: n(row.closed_at),
+    last_message_at: Number(row.last_message_at),
+    pending_member_message_at: n(row.pending_member_message_at),
+  };
+}
+
+function toAntiPingRow(row: {
+  user_id: string;
+  offence_count: number;
+  auto_timeout_count: number;
+  last_mute_at: bigint | null;
+  last_unmute_at: bigint | null;
+  last_offence_at: bigint | null;
+}): AntiPingRow {
+  return {
+    ...row,
+    last_mute_at: n(row.last_mute_at),
+    last_unmute_at: n(row.last_unmute_at),
+    last_offence_at: n(row.last_offence_at),
+  };
+}
+
 export const ticketsDb = {
-  create(input: {
+  async create(input: {
     channel_id: string;
     guild_id: string;
     opener_id: string;
     type: TicketType;
     reason: string;
     opened_at: number;
-  }): TicketRow {
-    const result = db
-      .prepare(
-        `INSERT INTO tickets (channel_id, guild_id, opener_id, type, reason, opened_at, last_message_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
-        input.channel_id,
-        input.guild_id,
-        input.opener_id,
-        input.type,
-        input.reason,
-        input.opened_at,
-        input.opened_at,
-      );
-    ticketStatsDb.recordOpened(input.type);
-    return ticketsDb.getById(Number(result.lastInsertRowid))!;
+  }): Promise<TicketRow> {
+    const row = await prisma.ticket.create({
+      data: {
+        channel_id: input.channel_id,
+        guild_id: input.guild_id,
+        opener_id: input.opener_id,
+        type: input.type,
+        reason: input.reason,
+        opened_at: BigInt(input.opened_at),
+        last_message_at: BigInt(input.opened_at),
+      },
+    });
+    await ticketStatsDb.recordOpened(input.type);
+    return toTicketRow(row);
   },
 
-  getById(id: number): TicketRow | undefined {
-    return db.prepare('SELECT * FROM tickets WHERE id = ?').get(id) as TicketRow | undefined;
+  async getById(id: number): Promise<TicketRow | undefined> {
+    const row = await prisma.ticket.findUnique({ where: { id } });
+    return row ? toTicketRow(row) : undefined;
   },
 
-  getByChannel(channelId: string): TicketRow | undefined {
-    return db.prepare('SELECT * FROM tickets WHERE channel_id = ?').get(channelId) as
-      | TicketRow
-      | undefined;
+  async getByChannel(channelId: string): Promise<TicketRow | undefined> {
+    const row = await prisma.ticket.findUnique({ where: { channel_id: channelId } });
+    return row ? toTicketRow(row) : undefined;
   },
 
-  getOpenByOpener(openerId: string): TicketRow[] {
-    return db
-      .prepare(`SELECT * FROM tickets WHERE opener_id = ? AND status = 'open'`)
-      .all(openerId) as unknown as TicketRow[];
+  async getOpenByOpener(openerId: string): Promise<TicketRow[]> {
+    const rows = await prisma.ticket.findMany({
+      where: { opener_id: openerId, status: 'open' },
+    });
+    return rows.map(toTicketRow);
   },
 
-  getAllByOpener(openerId: string): TicketRow[] {
-    return db
-      .prepare(`SELECT * FROM tickets WHERE opener_id = ? ORDER BY opened_at DESC`)
-      .all(openerId) as unknown as TicketRow[];
+  async getAllByOpener(openerId: string): Promise<TicketRow[]> {
+    const rows = await prisma.ticket.findMany({
+      where: { opener_id: openerId },
+      orderBy: { opened_at: 'desc' },
+    });
+    return rows.map(toTicketRow);
   },
 
-  countOpenByOpener(openerId: string): number {
-    const row = db
-      .prepare(`SELECT COUNT(*) AS c FROM tickets WHERE opener_id = ? AND status = 'open'`)
-      .get(openerId) as { c: number };
-    return row.c;
+  async countOpenByOpener(openerId: string): Promise<number> {
+    return prisma.ticket.count({ where: { opener_id: openerId, status: 'open' } });
   },
 
-  countOpen(): number {
-    const row = db.prepare(`SELECT COUNT(*) AS c FROM tickets WHERE status = 'open'`).get() as {
-      c: number;
-    };
-    return row.c;
+  async countOpen(): Promise<number> {
+    return prisma.ticket.count({ where: { status: 'open' } });
   },
 
-  getOpenAll(): TicketRow[] {
-    return db.prepare(`SELECT * FROM tickets WHERE status = 'open'`).all() as unknown as TicketRow[];
+  async getOpenAll(): Promise<TicketRow[]> {
+    const rows = await prisma.ticket.findMany({ where: { status: 'open' } });
+    return rows.map(toTicketRow);
   },
 
-  setClaimed(channelId: string, userId: string | null): void {
-    db.prepare(`UPDATE tickets SET claimed_by = ? WHERE channel_id = ?`).run(userId, channelId);
+  async setClaimed(channelId: string, userId: string | null): Promise<void> {
+    await prisma.ticket.update({
+      where: { channel_id: channelId },
+      data: { claimed_by: userId },
+    });
   },
 
   /** Records a claim or transfer-in against per-ticket fields, claim stats, and history. */
-  recordClaim(
+  async recordClaim(
     ticket: TicketRow,
     staffId: string,
     action: 'claim' | 'transfer_in' = 'claim',
-  ): void {
-    db.prepare(
-      `UPDATE tickets SET
-        claimed_by = ?,
-        times_claimed = times_claimed + 1,
-        first_claimed_by = COALESCE(first_claimed_by, ?),
-        last_claimed_by = ?
-       WHERE channel_id = ?`,
-    ).run(staffId, staffId, staffId, ticket.channel_id);
+  ): Promise<void> {
+    await prisma.ticket.update({
+      where: { channel_id: ticket.channel_id },
+      data: {
+        claimed_by: staffId,
+        times_claimed: { increment: 1 },
+        first_claimed_by: ticket.first_claimed_by ?? staffId,
+        last_claimed_by: staffId,
+      },
+    });
 
-    claimStatsDb.increment(staffId, ticket.type);
-    claimHistoryDb.add({
+    await claimStatsDb.increment(staffId, ticket.type);
+    await claimHistoryDb.add({
       ticket_id: ticket.id,
       channel_id: ticket.channel_id,
       staff_id: staffId,
@@ -255,13 +184,16 @@ export const ticketsDb = {
     });
   },
 
-  recordUnclaim(
+  async recordUnclaim(
     ticket: TicketRow,
     staffId: string,
     action: 'unclaim' | 'force_unclaim' | 'transfer_out' | 'switchpanel' = 'unclaim',
-  ): void {
-    db.prepare(`UPDATE tickets SET claimed_by = NULL WHERE channel_id = ?`).run(ticket.channel_id);
-    claimHistoryDb.add({
+  ): Promise<void> {
+    await prisma.ticket.update({
+      where: { channel_id: ticket.channel_id },
+      data: { claimed_by: null },
+    });
+    await claimHistoryDb.add({
       ticket_id: ticket.id,
       channel_id: ticket.channel_id,
       staff_id: staffId,
@@ -271,65 +203,75 @@ export const ticketsDb = {
     });
   },
 
-  setControlMessage(channelId: string, messageId: string): void {
-    db.prepare(`UPDATE tickets SET control_message_id = ? WHERE channel_id = ?`).run(
-      messageId,
-      channelId,
-    );
+  async setControlMessage(channelId: string, messageId: string): Promise<void> {
+    await prisma.ticket.update({
+      where: { channel_id: channelId },
+      data: { control_message_id: messageId },
+    });
   },
 
-  setType(channelId: string, type: TicketType): void {
-    db.prepare(`UPDATE tickets SET type = ? WHERE channel_id = ?`).run(type, channelId);
+  async setType(channelId: string, type: TicketType): Promise<void> {
+    await prisma.ticket.update({ where: { channel_id: channelId }, data: { type } });
   },
 
-  setPendingMember(channelId: string, at: number | null): void {
-    db.prepare(`UPDATE tickets SET pending_member_message_at = ? WHERE channel_id = ?`).run(
-      at,
-      channelId,
-    );
+  async setPendingMember(channelId: string, at: number | null): Promise<void> {
+    await prisma.ticket.update({
+      where: { channel_id: channelId },
+      data: { pending_member_message_at: at === null ? null : BigInt(at) },
+    });
   },
 
-  onActivity(
+  async onActivity(
     channelId: string,
     opts: {
       lastStaffSpeakerId?: string;
       clearPending?: boolean;
       setPendingIfEmpty?: boolean;
     } = {},
-  ): void {
-    const ticket = ticketsDb.getByChannel(channelId);
+  ): Promise<void> {
+    const ticket = await ticketsDb.getByChannel(channelId);
     if (!ticket || ticket.status !== 'open') return;
 
     let pending = ticket.pending_member_message_at;
     if (opts.clearPending) pending = null;
     else if (opts.setPendingIfEmpty && pending == null) pending = Date.now();
 
-    db.prepare(
-      `UPDATE tickets SET
-        last_message_at = ?,
-        checkup_sent = 0,
-        last_staff_speaker_id = COALESCE(?, last_staff_speaker_id),
-        pending_member_message_at = ?
-       WHERE channel_id = ?`,
-    ).run(Date.now(), opts.lastStaffSpeakerId ?? null, pending, channelId);
+    await prisma.ticket.update({
+      where: { channel_id: channelId },
+      data: {
+        last_message_at: BigInt(Date.now()),
+        checkup_sent: 0,
+        last_staff_speaker_id: opts.lastStaffSpeakerId ?? ticket.last_staff_speaker_id,
+        pending_member_message_at: pending === null ? null : BigInt(pending),
+      },
+    });
   },
 
-  markCheckupSent(channelId: string): void {
-    db.prepare(`UPDATE tickets SET checkup_sent = 1 WHERE channel_id = ?`).run(channelId);
+  async markCheckupSent(channelId: string): Promise<void> {
+    await prisma.ticket.update({ where: { channel_id: channelId }, data: { checkup_sent: 1 } });
   },
 
-  close(channelId: string, closedBy: string, closeReason: string): TicketRow | undefined {
-    const before = ticketsDb.getByChannel(channelId);
-    db.prepare(
-      `UPDATE tickets SET status = 'closed', closed_at = ?, closed_by = ?, close_reason = ?,
-        pending_member_message_at = NULL
-       WHERE channel_id = ? AND status = 'open'`,
-    ).run(Date.now(), closedBy, closeReason, channelId);
-    const closed = ticketsDb.getByChannel(channelId);
+  async close(
+    channelId: string,
+    closedBy: string,
+    closeReason: string,
+  ): Promise<TicketRow | undefined> {
+    const before = await ticketsDb.getByChannel(channelId);
+    await prisma.ticket.updateMany({
+      where: { channel_id: channelId, status: 'open' },
+      data: {
+        status: 'closed',
+        closed_at: BigInt(Date.now()),
+        closed_by: closedBy,
+        close_reason: closeReason,
+        pending_member_message_at: null,
+      },
+    });
+    const closed = await ticketsDb.getByChannel(channelId);
     if (before && closed?.status === 'closed') {
-      ticketStatsDb.recordClosed(before.type);
+      await ticketStatsDb.recordClosed(before.type);
       if (before.claimed_by) {
-        claimHistoryDb.add({
+        await claimHistoryDb.add({
           ticket_id: before.id,
           channel_id: before.channel_id,
           staff_id: before.claimed_by,
@@ -344,187 +286,186 @@ export const ticketsDb = {
 };
 
 export const blacklistDb = {
-  isBlacklisted(userId: string): boolean {
-    return Boolean(db.prepare('SELECT 1 AS x FROM blacklist WHERE user_id = ?').get(userId));
+  async isBlacklisted(userId: string): Promise<boolean> {
+    return (await prisma.blacklist.findUnique({ where: { user_id: userId } })) !== null;
   },
 
-  add(userId: string, reason?: string): void {
-    if (blacklistDb.isBlacklisted(userId)) return;
-    db.prepare('INSERT INTO blacklist (user_id, created_at, reason) VALUES (?, ?, ?)').run(
-      userId,
-      Date.now(),
-      reason ?? null,
-    );
+  async add(userId: string, reason?: string): Promise<void> {
+    if (await blacklistDb.isBlacklisted(userId)) return;
+    await prisma.blacklist.create({
+      data: { user_id: userId, created_at: BigInt(Date.now()), reason: reason ?? null },
+    });
   },
 
-  remove(userId: string): void {
-    db.prepare('DELETE FROM blacklist WHERE user_id = ?').run(userId);
+  async remove(userId: string): Promise<void> {
+    await prisma.blacklist.deleteMany({ where: { user_id: userId } });
   },
 
-  toggle(userId: string, reason?: string): 'added' | 'removed' {
-    if (blacklistDb.isBlacklisted(userId)) {
-      blacklistDb.remove(userId);
+  async toggle(userId: string, reason?: string): Promise<'added' | 'removed'> {
+    if (await blacklistDb.isBlacklisted(userId)) {
+      await blacklistDb.remove(userId);
       return 'removed';
     }
-    blacklistDb.add(userId, reason);
+    await blacklistDb.add(userId, reason);
     return 'added';
   },
 };
 
 export const metaDb = {
-  get(key: string): string | null {
-    const row = db.prepare('SELECT value FROM meta WHERE key = ?').get(key) as
-      | { value: string }
-      | undefined;
+  async get(key: string): Promise<string | null> {
+    const row = await prisma.meta.findUnique({ where: { key } });
     return row?.value ?? null;
   },
 
-  set(key: string, value: string): void {
-    db.prepare(
-      `INSERT INTO meta (key, value) VALUES (?, ?)
-       ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
-    ).run(key, value);
+  async set(key: string, value: string): Promise<void> {
+    await prisma.meta.upsert({
+      where: { key },
+      create: { key, value },
+      update: { value },
+    });
   },
 };
 
 export const etaDb = {
-  addSample(ticketId: number, delayMs: number): void {
-    db.prepare(
-      `INSERT INTO response_samples (ticket_id, delay_ms, recorded_at) VALUES (?, ?, ?)`,
-    ).run(ticketId, delayMs, Date.now());
+  async addSample(ticketId: number, delayMs: number): Promise<void> {
+    await prisma.responseSample.create({
+      data: { ticket_id: ticketId, delay_ms: delayMs, recorded_at: BigInt(Date.now()) },
+    });
   },
 
-  sampleCount(): number {
-    const row = db.prepare(`SELECT COUNT(*) AS c FROM response_samples`).get() as { c: number };
-    return row.c;
+  async sampleCount(): Promise<number> {
+    return prisma.responseSample.count();
   },
 
-  averageMs(): number | null {
-    if (etaDb.sampleCount() < ETA_MIN_SAMPLES) return null;
-    const row = db.prepare(`SELECT AVG(delay_ms) AS avg FROM response_samples`).get() as {
-      avg: number;
-    };
-    return row.avg;
+  async averageMs(): Promise<number | null> {
+    if ((await etaDb.sampleCount()) < ETA_MIN_SAMPLES) return null;
+    const result = await prisma.responseSample.aggregate({ _avg: { delay_ms: true } });
+    return result._avg.delay_ms;
   },
 };
 
 export const antiPingDb = {
-  get(userId: string): AntiPingRow {
-    const existing = db.prepare('SELECT * FROM anti_ping WHERE user_id = ?').get(userId) as
-      | AntiPingRow
-      | undefined;
-    if (existing) return existing;
-    db.prepare(
-      `INSERT INTO anti_ping (user_id, offence_count, auto_timeout_count) VALUES (?, 0, 0)`,
-    ).run(userId);
-    return antiPingDb.get(userId);
+  async get(userId: string): Promise<AntiPingRow> {
+    const existing = await prisma.antiPing.findUnique({ where: { user_id: userId } });
+    if (existing) return toAntiPingRow(existing);
+    const created = await prisma.antiPing.create({
+      data: { user_id: userId, offence_count: 0, auto_timeout_count: 0 },
+    });
+    return toAntiPingRow(created);
   },
 
-  save(row: AntiPingRow): void {
-    db.prepare(
-      `INSERT INTO anti_ping (user_id, offence_count, auto_timeout_count, last_mute_at, last_unmute_at, last_offence_at)
-       VALUES (?, ?, ?, ?, ?, ?)
-       ON CONFLICT(user_id) DO UPDATE SET
-         offence_count = excluded.offence_count,
-         auto_timeout_count = excluded.auto_timeout_count,
-         last_mute_at = excluded.last_mute_at,
-         last_unmute_at = excluded.last_unmute_at,
-         last_offence_at = excluded.last_offence_at`,
-    ).run(
-      row.user_id,
-      row.offence_count,
-      row.auto_timeout_count,
-      row.last_mute_at,
-      row.last_unmute_at,
-      row.last_offence_at,
-    );
+  async save(row: AntiPingRow): Promise<void> {
+    await prisma.antiPing.upsert({
+      where: { user_id: row.user_id },
+      create: {
+        user_id: row.user_id,
+        offence_count: row.offence_count,
+        auto_timeout_count: row.auto_timeout_count,
+        last_mute_at: row.last_mute_at === null ? null : BigInt(row.last_mute_at),
+        last_unmute_at: row.last_unmute_at === null ? null : BigInt(row.last_unmute_at),
+        last_offence_at: row.last_offence_at === null ? null : BigInt(row.last_offence_at),
+      },
+      update: {
+        offence_count: row.offence_count,
+        auto_timeout_count: row.auto_timeout_count,
+        last_mute_at: row.last_mute_at === null ? null : BigInt(row.last_mute_at),
+        last_unmute_at: row.last_unmute_at === null ? null : BigInt(row.last_unmute_at),
+        last_offence_at: row.last_offence_at === null ? null : BigInt(row.last_offence_at),
+      },
+    });
   },
 };
 
 export const claimStatsDb = {
-  increment(userId: string, type: TicketType): void {
-    db.prepare(
-      `INSERT INTO claim_stats (user_id, type, claims) VALUES (?, ?, 1)
-       ON CONFLICT(user_id, type) DO UPDATE SET claims = claims + 1`,
-    ).run(userId, type);
+  async increment(userId: string, type: TicketType): Promise<void> {
+    await prisma.claimStat.upsert({
+      where: { user_id_type: { user_id: userId, type } },
+      create: { user_id: userId, type, claims: 1 },
+      update: { claims: { increment: 1 } },
+    });
   },
 
-  getForUser(userId: string): { type: TicketType; claims: number }[] {
-    return db
-      .prepare(`SELECT type, claims FROM claim_stats WHERE user_id = ? ORDER BY type`)
-      .all(userId) as { type: TicketType; claims: number }[];
+  async getForUser(userId: string): Promise<{ type: TicketType; claims: number }[]> {
+    const rows = await prisma.claimStat.findMany({
+      where: { user_id: userId },
+      orderBy: { type: 'asc' },
+    });
+    return rows.map((r) => ({ type: r.type as TicketType, claims: r.claims }));
   },
 
-  getAll(): { user_id: string; type: TicketType; claims: number }[] {
-    return db
-      .prepare(`SELECT user_id, type, claims FROM claim_stats ORDER BY claims DESC`)
-      .all() as { user_id: string; type: TicketType; claims: number }[];
+  async getAll(): Promise<{ user_id: string; type: TicketType; claims: number }[]> {
+    const rows = await prisma.claimStat.findMany({ orderBy: { claims: 'desc' } });
+    return rows.map((r) => ({ user_id: r.user_id, type: r.type as TicketType, claims: r.claims }));
   },
 
-  totalForUser(userId: string): number {
-    const row = db
-      .prepare(`SELECT COALESCE(SUM(claims), 0) AS c FROM claim_stats WHERE user_id = ?`)
-      .get(userId) as { c: number };
-    return row.c;
+  async totalForUser(userId: string): Promise<number> {
+    const result = await prisma.claimStat.aggregate({
+      where: { user_id: userId },
+      _sum: { claims: true },
+    });
+    return result._sum.claims ?? 0;
   },
 };
 
 export const claimHistoryDb = {
-  add(input: {
+  async add(input: {
     ticket_id: number;
     channel_id: string;
     staff_id: string;
     type: TicketType;
     action: string;
     meta?: string | null;
-  }): void {
-    db.prepare(
-      `INSERT INTO claim_history (ticket_id, channel_id, staff_id, type, action, at, meta)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    ).run(
-      input.ticket_id,
-      input.channel_id,
-      input.staff_id,
-      input.type,
-      input.action,
-      Date.now(),
-      input.meta ?? null,
-    );
+  }): Promise<void> {
+    await prisma.claimHistory.create({
+      data: {
+        ticket_id: input.ticket_id,
+        channel_id: input.channel_id,
+        staff_id: input.staff_id,
+        type: input.type,
+        action: input.action,
+        at: BigInt(Date.now()),
+        meta: input.meta ?? null,
+      },
+    });
   },
 
-  forTicket(ticketId: number) {
-    return db
-      .prepare(`SELECT * FROM claim_history WHERE ticket_id = ? ORDER BY at ASC`)
-      .all(ticketId);
+  async forTicket(ticketId: number) {
+    const rows = await prisma.claimHistory.findMany({
+      where: { ticket_id: ticketId },
+      orderBy: { at: 'asc' },
+    });
+    return rows.map((r) => ({ ...r, at: Number(r.at) }));
   },
 
-  forStaff(staffId: string, limit = 50) {
-    return db
-      .prepare(
-        `SELECT * FROM claim_history WHERE staff_id = ? ORDER BY at DESC LIMIT ?`,
-      )
-      .all(staffId, limit);
+  async forStaff(staffId: string, limit = 50) {
+    const rows = await prisma.claimHistory.findMany({
+      where: { staff_id: staffId },
+      orderBy: { at: 'desc' },
+      take: limit,
+    });
+    return rows.map((r) => ({ ...r, at: Number(r.at) }));
   },
 };
 
 export const ticketStatsDb = {
-  recordOpened(type: TicketType): void {
-    db.prepare(
-      `INSERT INTO ticket_type_stats (type, opened, closed) VALUES (?, 1, 0)
-       ON CONFLICT(type) DO UPDATE SET opened = opened + 1`,
-    ).run(type);
+  async recordOpened(type: TicketType): Promise<void> {
+    await prisma.ticketTypeStat.upsert({
+      where: { type },
+      create: { type, opened: 1, closed: 0 },
+      update: { opened: { increment: 1 } },
+    });
   },
 
-  recordClosed(type: TicketType): void {
-    db.prepare(
-      `INSERT INTO ticket_type_stats (type, opened, closed) VALUES (?, 0, 1)
-       ON CONFLICT(type) DO UPDATE SET closed = closed + 1`,
-    ).run(type);
+  async recordClosed(type: TicketType): Promise<void> {
+    await prisma.ticketTypeStat.upsert({
+      where: { type },
+      create: { type, opened: 0, closed: 1 },
+      update: { closed: { increment: 1 } },
+    });
   },
 
-  getAll(): { type: TicketType; opened: number; closed: number }[] {
-    return db
-      .prepare(`SELECT type, opened, closed FROM ticket_type_stats ORDER BY type`)
-      .all() as { type: TicketType; opened: number; closed: number }[];
+  async getAll(): Promise<{ type: TicketType; opened: number; closed: number }[]> {
+    const rows = await prisma.ticketTypeStat.findMany({ orderBy: { type: 'asc' } });
+    return rows.map((r) => ({ type: r.type as TicketType, opened: r.opened, closed: r.closed }));
   },
 };

@@ -36,10 +36,10 @@ export async function closeTicket(
       await new Promise((r) => setTimeout(r, closeDelayMs()));
     }
 
-    const fresh = ticketsDb.getByChannel(channel.id);
+    const fresh = await ticketsDb.getByChannel(channel.id);
     if (!fresh || fresh.status !== 'open') return;
 
-    const closed = ticketsDb.close(channel.id, closedById, closeReason || 'No reason provided');
+    const closed = await ticketsDb.close(channel.id, closedById, closeReason || 'No reason provided');
     if (!closed) return;
 
     // HTML from discord-html-transcripts — attached in Discord and shared online

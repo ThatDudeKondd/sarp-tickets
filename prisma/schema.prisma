@@ -1,0 +1,112 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// type/status are plain strings, not native enums — matches sarp-utilities'
+// convention of validating enums in TS (TicketType) rather than at the DB layer.
+
+model Ticket {
+  id         Int     @id @default(autoincrement())
+  channel_id String  @unique
+  guild_id   String
+  opener_id  String
+  type       String
+  reason     String
+  claimed_by String?
+  status     String  @default("open")
+
+  opened_at                 BigInt
+  closed_at                 BigInt?
+  close_reason              String?
+  closed_by                 String?
+  last_message_at           BigInt
+  checkup_sent              Int     @default(0)
+  last_staff_speaker_id     String?
+  pending_member_message_at BigInt?
+  control_message_id        String?
+  times_claimed             Int     @default(0)
+  first_claimed_by          String?
+  last_claimed_by           String?
+
+  response_samples ResponseSample[]
+  claim_history    ClaimHistory[]
+
+  @@map("tickets")
+}
+
+model Blacklist {
+  user_id    String  @id
+  created_at BigInt
+  reason     String?
+
+  @@map("blacklist")
+}
+
+model Meta {
+  key   String @id
+  value String
+
+  @@map("meta")
+}
+
+model ResponseSample {
+  id          Int    @id @default(autoincrement())
+  ticket_id   Int
+  delay_ms    Int
+  recorded_at BigInt
+
+  ticket Ticket @relation(fields: [ticket_id], references: [id])
+
+  @@map("response_samples")
+}
+
+model AntiPing {
+  user_id            String  @id
+  offence_count      Int     @default(0)
+  auto_timeout_count Int     @default(0)
+  last_mute_at       BigInt?
+  last_unmute_at     BigInt?
+  last_offence_at    BigInt?
+
+  @@map("anti_ping")
+}
+
+model ClaimStat {
+  user_id String
+  type    String
+  claims  Int    @default(0)
+
+  @@id([user_id, type])
+  @@map("claim_stats")
+}
+
+model ClaimHistory {
+  id         Int     @id @default(autoincrement())
+  ticket_id  Int
+  channel_id String
+  staff_id   String
+  type       String
+  action     String
+  at         BigInt
+  meta       String?
+
+  ticket Ticket @relation(fields: [ticket_id], references: [id])
+
+  @@map("claim_history")
+}
+
+model TicketTypeStat {
+  type   String @id
+  opened Int    @default(0)
+  closed Int    @default(0)
+
+  @@map("ticket_type_stats")
+}

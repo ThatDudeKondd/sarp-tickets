@@ -41,7 +41,7 @@ export async function refreshAssistancePanel(client: Client): Promise<void> {
     components: [buildPanelContainer()],
     flags: V2_FLAGS,
   });
-  metaDb.set('last_panel_at', String(Date.now()));
+  await metaDb.set('last_panel_at', String(Date.now()));
 }
 
 function msUntilNextMidnightGmt(): number {
@@ -52,7 +52,7 @@ function msUntilNextMidnightGmt(): number {
 }
 
 async function runMidnightJob(client: Client): Promise<void> {
-  const last = Number(metaDb.get('last_panel_at') ?? '0');
+  const last = Number((await metaDb.get('last_panel_at')) ?? '0');
   const now = Date.now();
   if (!last || now - last >= THREE_DAYS_MS) {
     try {

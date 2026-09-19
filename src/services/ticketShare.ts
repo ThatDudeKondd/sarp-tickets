@@ -86,7 +86,7 @@ async function serializeTicket(
     closed_at: ticket.closed_at,
 
     transcript_url,
-    claim_history: claimHistoryDb.forTicket(ticket.id),
+    claim_history: await claimHistoryDb.forTicket(ticket.id),
   };
 }
 
@@ -97,7 +97,7 @@ export async function buildUserTicketsSharePayload(
   currentChannelName: string,
   client?: Client,
 ) {
-  const rows = ticketsDb.getAllByOpener(openerId);
+  const rows = await ticketsDb.getAllByOpener(openerId);
   const opener = await resolveUser(client, openerId);
 
   const tickets = await Promise.all(

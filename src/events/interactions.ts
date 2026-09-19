@@ -64,8 +64,8 @@ export async function handlePrefixCommand(message: Message): Promise<void> {
       return;
     }
     const userId = blacklistMatch[1];
-    if (blacklistDb.isBlacklisted(userId)) {
-      blacklistDb.remove(userId);
+    if (await blacklistDb.isBlacklisted(userId)) {
+      await blacklistDb.remove(userId);
       await message.reply(`Removed <@${userId}> from the ticket blacklist.`);
       void logPrefixCommand(message, `-tickets blacklist ${userId}`);
       return;
@@ -83,7 +83,7 @@ async function requireTicketChannel(interaction: Interaction) {
   if (!interaction.guild || !interaction.channel || !interaction.channel.isTextBased()) {
     return null;
   }
-  const ticket = ticketsDb.getByChannel(interaction.channel.id);
+  const ticket = await ticketsDb.getByChannel(interaction.channel.id);
   if (!ticket || ticket.status !== 'open') return null;
   return { ticket, channel: interaction.channel as TextChannel };
 }
@@ -189,7 +189,7 @@ async function onButton(interaction: ButtonInteraction): Promise<void> {
 
     const member = await interaction.guild!.members.fetch(interaction.user.id);
     // Re-read claim state from the database in case it changed since the control message was built.
-    const ticket = ticketsDb.getByChannel(ctx.channel.id) ?? ctx.ticket;
+    const ticket = (await ticketsDb.getByChannel(ctx.channel.id)) ?? ctx.ticket;
 
     if (id === 'ticket:claim') {
       await interaction.deferReply({ ephemeral: true });
@@ -284,7 +284,7 @@ async function onSlash(interaction: ChatInputCommandInteraction): Promise<void> 
     }
 
     const member = await interaction.guild!.members.fetch(interaction.user.id);
-    const ticket = ticketsDb.getByChannel(ctx.channel.id) ?? ctx.ticket;
+    const ticket = (await ticketsDb.getByChannel(ctx.channel.id)) ?? ctx.ticket;
 
     switch (name) {
       case 'claim': {
@@ -432,7 +432,7 @@ async function onSlash(interaction: ChatInputCommandInteraction): Promise<void> 
           return;
         }
         const updated = await ctx.channel.setName(name);
-        const fresh = ticketsDb.getByChannel(ctx.channel.id) ?? ticket;
+        const fresh = (await ticketsDb.getByChannel(ctx.channel.id)) ?? ticket;
         shareTicketDataFireAndForget(fresh, updated.name, interaction.client);
         await interaction.editReply(
           `Renamed to \`${updated.name}\`.` +

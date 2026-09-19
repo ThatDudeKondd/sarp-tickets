@@ -6,7 +6,7 @@ import { closeTicket } from './close';
 
 export function startInactivityScheduler(client: Client): void {
   const tick = async () => {
-    const open = ticketsDb.getOpenAll();
+    const open = await ticketsDb.getOpenAll();
     const now = Date.now();
     const checkupMs = inactivityCheckupMs();
     const closeMs = inactivityCloseMs();
@@ -36,7 +36,7 @@ export function startInactivityScheduler(client: Client): void {
             users: [ticket.opener_id, ...(staffId ? [staffId] : [])],
           },
         });
-        ticketsDb.markCheckupSent(ticket.channel_id);
+        await ticketsDb.markCheckupSent(ticket.channel_id);
       }
     }
   };

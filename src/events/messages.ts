@@ -10,7 +10,7 @@ export async function handleMessageCreate(message: Message): Promise<void> {
   await handlePrefixCommand(message);
 
   if (!message.channel.isTextBased()) return;
-  const ticket = ticketsDb.getByChannel(message.channel.id);
+  const ticket = await ticketsDb.getByChannel(message.channel.id);
   if (!ticket || ticket.status !== 'open') return;
 
   const member =
@@ -26,10 +26,10 @@ export async function handleMessageCreate(message: Message): Promise<void> {
     if (ticket.pending_member_message_at) {
       const delay = Date.now() - ticket.pending_member_message_at;
       if (delay >= 0 && delay < 7 * 24 * 60 * 60 * 1000) {
-        etaDb.addSample(ticket.id, delay);
+        await etaDb.addSample(ticket.id, delay);
       }
     }
-    ticketsDb.onActivity(message.channel.id, {
+    await ticketsDb.onActivity(message.channel.id, {
       lastStaffSpeakerId: message.author.id,
       clearPending: true,
     });
@@ -37,5 +37,5 @@ export async function handleMessageCreate(message: Message): Promise<void> {
   }
 
   // Opener or added member: start or keep the pending timestamp used for ETA samples.
-  ticketsDb.onActivity(message.channel.id, { setPendingIfEmpty: true });
+  await ticketsDb.onActivity(message.channel.id, { setPendingIfEmpty: true });
 }

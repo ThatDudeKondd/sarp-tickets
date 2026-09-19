@@ -7,7 +7,7 @@ import {
   Routes,
 } from 'discord.js';
 import { env } from './config';
-import './db';
+import { connectDatabase, disconnectDatabase } from './database/client';
 import { slashCommands } from './commands/slash';
 import { handleInteraction } from './events/interactions';
 import { handleMessageCreate } from './events/messages';
@@ -65,4 +65,24 @@ client.on(Events.GuildMemberRemove, (member) => {
   ).catch((err) => console.error('Leave-close error:', err));
 });
 
-void client.login(env.token);
+async function shutdown() {
+  console.log('Shutting down bot...');
+  const forceExit = setTimeout(() => process.exit(1), 3000);
+  forceExit.unref();
+  try {
+    await disconnectDatabase();
+    client.destroy();
+  } finally {
+    clearTimeout(forceExit);
+    process.exit(0);
+  }
+}
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
+
+connectDatabase()
+  .then(() => client.login(env.token))
+  .catch((err) => {
+    console.error('Failed to start bot:', err);
+    process.exit(1);
+  });
