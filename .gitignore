@@ -7,5 +7,6 @@ website/
 .env
 *.log
 .DS_Store
+.serena/
 
 /src/generated/prisma

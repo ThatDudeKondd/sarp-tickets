@@ -1,0 +1,10 @@
+node_modules
+dist
+src/generated
+.env
+.git
+.serena
+*.log
+data/tickets.sqlite*
+data/tickets/
+website/

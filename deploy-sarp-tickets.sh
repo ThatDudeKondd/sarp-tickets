@@ -28,12 +28,14 @@ fi
 echo "New commits found ($LOCAL -> $REMOTE), deploying..."
 git pull origin "$BRANCH"
 
-npm install
-npm run db:update
-npm run build
+docker build -t sarp-tickets:latest .
+
+# --network host lets the throwaway container reach Postgres at
+# localhost:5432 the same way the systemd-run container does.
+docker run --rm --network host --env-file .env sarp-tickets:latest npm run db:update
 
 # Idempotent -- safe to run even when commands haven't changed.
-npm run deploy
+docker run --rm --network host --env-file .env sarp-tickets:latest npm run deploy
 
 systemctl --user restart sarp-tickets.service
 
