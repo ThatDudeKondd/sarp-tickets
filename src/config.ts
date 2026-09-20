@@ -54,12 +54,8 @@ function loadRaw(): BotConfig {
     footer: String(raw.footer ?? '').trim(),
     Assistance_Channel: req(raw, 'Assistance_Channel'),
     Transcript_Channel: req(raw, 'Transcript_Channel'),
-    Blacklist_Alert_Channel:
-      String(raw.Blacklist_Alert_Channel ?? '1532512356708651038').trim() ||
-      '1532512356708651038',
-    Command_Log_Channel:
-      String(raw.Command_Log_Channel ?? '1538980774114492496').trim() ||
-      '1538980774114492496',
+    Blacklist_Alert_Channel: req(raw, 'Blacklist_Alert_Channel'),
+    Command_Log_Channel: req(raw, 'Command_Log_Channel'),
     General_support_role: req(raw, 'General_support_role'),
     Supervisor_support_role: req(raw, 'Supervisor_support_role'),
     General_category: req(raw, 'General_category'),
@@ -154,6 +150,7 @@ export const CHANNEL_SETTING_KEYS = [
   'Assistance_Channel',
   'Transcript_Channel',
   'Blacklist_Alert_Channel',
+  'Command_Log_Channel',
   'General_category',
   'Supervisor_category',
 ] as const;

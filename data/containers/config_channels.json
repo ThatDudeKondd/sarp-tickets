@@ -14,6 +14,7 @@
         { "label": "Assistance Channel", "value": "Assistance_Channel", "description": "{Assistance_Channel}" },
         { "label": "Transcript Channel", "value": "Transcript_Channel", "description": "{Transcript_Channel}" },
         { "label": "Blacklist Alert Channel", "value": "Blacklist_Alert_Channel", "description": "{Blacklist_Alert_Channel}" },
+        { "label": "Command Log Channel", "value": "Command_Log_Channel", "description": "{Command_Log_Channel}" },
         { "label": "General Category", "value": "General_category", "description": "{General_category}" },
         { "label": "Supervisor Category", "value": "Supervisor_category", "description": "{Supervisor_category}" }
       ]

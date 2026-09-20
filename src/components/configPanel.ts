@@ -6,6 +6,7 @@ export const CHANNEL_LABELS: Record<ChannelSettingKey, string> = {
   Assistance_Channel: 'Assistance Channel',
   Transcript_Channel: 'Transcript Channel',
   Blacklist_Alert_Channel: 'Blacklist Alert Channel',
+  Command_Log_Channel: 'Command Log Channel',
   General_category: 'General Category',
   Supervisor_category: 'Supervisor Category',
 };
@@ -67,6 +68,7 @@ export function buildConfigChannelsPicker() {
     Assistance_Channel: c.Assistance_Channel,
     Transcript_Channel: c.Transcript_Channel,
     Blacklist_Alert_Channel: c.Blacklist_Alert_Channel,
+    Command_Log_Channel: c.Command_Log_Channel,
     General_category: c.General_category,
     Supervisor_category: c.Supervisor_category,
   });
