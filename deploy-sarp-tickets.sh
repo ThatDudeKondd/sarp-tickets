@@ -10,32 +10,39 @@ if ! flock -n 200; then
   exit 0
 fi
 
-REPO_DIR="/opt/sarp-project/sarp-tickets"
+ROOT_DIR="/opt/sarp-project"
+BOT_DIR="$ROOT_DIR/sarp-tickets"
+DJSKO_DIR="$ROOT_DIR/djsko"
 BRANCH="main"
 
-cd "$REPO_DIR"
+CHANGED=0
 
-git fetch origin "$BRANCH"
+for REPO_DIR in "$BOT_DIR" "$DJSKO_DIR"; do
+  cd "$REPO_DIR"
+  git fetch origin "$BRANCH"
+  LOCAL=$(git rev-parse HEAD)
+  REMOTE=$(git rev-parse origin/"$BRANCH")
+  if [ "$LOCAL" != "$REMOTE" ]; then
+    echo "Changes found in $(basename "$REPO_DIR") ($LOCAL -> $REMOTE), pulling..."
+    git pull origin "$BRANCH"
+    CHANGED=1
+  fi
+done
 
-LOCAL=$(git rev-parse HEAD)
-REMOTE=$(git rev-parse origin/"$BRANCH")
-
-if [ "$LOCAL" = "$REMOTE" ]; then
-  echo "No changes, nothing to deploy."
+if [ "$CHANGED" -eq 0 ]; then
+  echo "No changes in either repo, nothing to deploy."
   exit 0
 fi
 
-echo "New commits found ($LOCAL -> $REMOTE), deploying..."
-git pull origin "$BRANCH"
-
-docker build -t sarp-tickets:latest .
+cd "$ROOT_DIR"
+docker build -f sarp-tickets/Dockerfile -t sarp-tickets:latest .
 
 # --network host lets the throwaway container reach Postgres at
 # localhost:5432 the same way the systemd-run container does.
-docker run --rm --network host --env-file .env sarp-tickets:latest npm run db:update
+docker run --rm --network host --env-file sarp-tickets/.env sarp-tickets:latest npm run db:update
 
 # Idempotent -- safe to run even when commands haven't changed.
-docker run --rm --network host --env-file .env sarp-tickets:latest npm run deploy
+docker run --rm --network host --env-file sarp-tickets/.env sarp-tickets:latest npm run deploy
 
 systemctl --user restart sarp-tickets.service
 
