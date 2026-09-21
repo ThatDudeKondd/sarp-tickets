@@ -1,4 +1,4 @@
-import discordTranscripts, { ExportReturnType } from 'discord-html-transcripts';
+import discordTranscripts, { ExportReturnType } from 'discord-html-transcripts-v2';
 import { AttachmentBuilder, type TextChannel } from 'discord.js';
 import { closeDelayMs, getConfig } from '../config';
 import {
