@@ -32,6 +32,7 @@ model Ticket {
   last_staff_speaker_id     String?
   pending_member_message_at BigInt?
   control_message_id        String?
+  transcript_html           String?
   times_claimed             Int     @default(0)
   first_claimed_by          String?
   last_claimed_by           String?
