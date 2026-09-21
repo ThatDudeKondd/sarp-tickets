@@ -7,7 +7,7 @@ import {
   V2_FLAGS,
 } from '../components/builders';
 import { ticketsDb, type TicketRow } from '../db';
-import { shareTicketData, shareTicketTranscript } from './ticketShare';
+import { shareTicketTranscript } from './ticketShare';
 import { formatGmt } from '../utils/permissions';
 
 const closing = new Set<string>();
@@ -52,8 +52,7 @@ export async function closeTicket(
       returnType: ExportReturnType.String,
     })) as string;
 
-    await shareTicketTranscript(closed.opener_id, closed.id, html);
-    await shareTicketData(closed, channel.name, channel.client);
+    await shareTicketTranscript(closed.id, html);
 
     const attachment = new AttachmentBuilder(Buffer.from(html, 'utf8'), { name: fileName });
 

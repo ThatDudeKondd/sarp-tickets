@@ -100,8 +100,6 @@ export const env = {
   token: process.env.SARP_TICKETS_BOT_TOKEN?.replace(/^"|"$/g, '') ?? '',
   clientId: process.env.SARP_TICKETS_CLIENT_ID?.trim() ?? '',
   bloxlinkApiKey: process.env.BLOXLINK_API_KEY?.trim() ?? '',
-  /** Public site origin for ticket/transcript sharing (no trailing slash). */
-  domain: (process.env.DOMAIN ?? 'http://127.0.0.1:3000').replace(/\/$/, ''),
 };
 
 if (!env.token) throw new Error('Missing SARP_TICKETS_BOT_TOKEN');

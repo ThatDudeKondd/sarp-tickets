@@ -25,7 +25,6 @@ import {
 import { blacklistDb, etaDb, ticketsDb, type TicketRow } from '../db';
 import { resolveRoblox, relativeTimestamp } from './bloxlink';
 import { closeTicket } from './close';
-import { shareTicketDataFireAndForget } from './ticketShare';
 import {
   discordCreatedAt,
   formatDuration,
@@ -154,7 +153,6 @@ export async function createTicket(opts: {
   await ticketsDb.setControlMessage(channel.id, msg.id);
 
   const shared = (await ticketsDb.getByChannel(channel.id)) ?? ticket;
-  shareTicketDataFireAndForget(shared, channel.name, guild.client);
 
   return { ok: true, channel, ticket: shared };
 }
@@ -181,7 +179,6 @@ export async function claimTicket(
     flags: V2_FLAGS,
     allowedMentions: { users: [member.id] },
   });
-  shareTicketDataFireAndForget(updated, channel.name, channel.client);
   return { ok: true };
 }
 
@@ -211,7 +208,6 @@ export async function unclaimTicket(
     flags: V2_FLAGS,
     allowedMentions: { users: [member.id] },
   });
-  shareTicketDataFireAndForget(updated, channel.name, channel.client);
   return { ok: true };
 }
 
@@ -240,7 +236,6 @@ export async function transferTicket(
     flags: V2_FLAGS,
     allowedMentions: { users: [from.id, to.id] },
   });
-  shareTicketDataFireAndForget(updated, channel.name, channel.client);
   return { ok: true };
 }
 
@@ -267,7 +262,6 @@ export async function switchPanel(
     claimed_by: null,
   };
   await refreshControlMessage(channel, updated);
-  shareTicketDataFireAndForget(updated, channel.name, channel.client);
   return { ok: true };
 }
 

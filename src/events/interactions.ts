@@ -33,7 +33,6 @@ import {
 import { closeTicket, isClosing } from '../services/close';
 import { blacklistUser } from '../services/blacklist';
 import { refreshAssistancePanel } from '../services/panelSchedule';
-import { shareTicketDataFireAndForget } from '../services/ticketShare';
 import { logPrefixCommand, logSlashCommand } from '../services/commandLog';
 import { handleConfigInteraction, handleConfigPrefix } from './config';
 
@@ -432,8 +431,6 @@ async function onSlash(interaction: ChatInputCommandInteraction): Promise<void> 
           return;
         }
         const updated = await ctx.channel.setName(name);
-        const fresh = (await ticketsDb.getByChannel(ctx.channel.id)) ?? ticket;
-        shareTicketDataFireAndForget(fresh, updated.name, interaction.client);
         await interaction.editReply(
           `Renamed to \`${updated.name}\`.` +
             (input.includes(':') && updated.name !== input
