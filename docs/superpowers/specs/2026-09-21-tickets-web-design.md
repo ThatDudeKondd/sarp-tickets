@@ -33,15 +33,23 @@ frontend over files.
 Replaces `ticketShare.ts`'s current `shareTicketTranscript` /
 `shareTicketData` PUT calls.
 
-- Single route: `PUT /internal/transcripts/:ticketId`, body = raw HTML.
+- Not a Next.js API route — a standalone script, `internal-transcript-server.cjs`,
+  copied nearly verbatim from `sarp-utilities/webhook-server.cjs`'s
+  server/signature-check structure. Single route:
+  `PUT /internal/transcripts/:ticketId`, body = raw HTML.
 - Auth: HMAC-SHA256 over the body with a shared secret, `X-Signature-256`
   header, `crypto.timingSafeEqual` compare — same pattern as
-  `sarp-utilities/webhook-server.cjs`.
-- Primary defense is network isolation, not the HMAC: the sarp-tickets bot
-  container and sarp-tickets-web container share a private Docker network
-  (`sarp-internal`); this route is bound to that network only and is never
-  published to the host or routed through the Cloudflare Tunnel. The HMAC
-  is defense-in-depth in case that network boundary is ever
+  `webhook-server.cjs`.
+- Runs as a second pm2 app (alongside `next start`) in the same
+  `ecosystem.config.js`, same two-app-per-container pattern already
+  established — see `sarp-tickets/ecosystem.config.js` for the format.
+- Primary defense is network isolation, not the HMAC: like every other
+  service in this project, both containers run with `--network host`
+  (the established pattern here — see `deploy-sarp-tickets.sh`), and this
+  route's listener binds to `127.0.0.1` only, same as
+  `webhook-server.cjs` already does. That makes it unreachable from
+  outside the host, and it's never routed through the Cloudflare Tunnel.
+  The HMAC is defense-in-depth in case that binding is ever
   misconfigured.
 - The `/data/tickets/{userId}.json` PUT is deleted outright — the website
   computes a user's ticket list live from the DB, so shipping a synced
@@ -112,8 +120,8 @@ Replaces `ticketShare.ts`'s current `shareTicketTranscript` /
 - Dockerfile + systemd `--user` service + deploy script, mirroring
   `sarp-tickets`'s existing pattern (`deploy-sarp-tickets.sh` as the
   template).
-- Joins the `sarp-internal` Docker network alongside the `sarp-tickets`
-  bot container for the internal write path.
+- Runs with `--network host` like the other two services, so it can
+  reach both Postgres and the internal write path over `localhost`.
 - New Cloudflare Tunnel ingress rule + DNS record for
   `tickets.san-andreas-rp.co.uk`, following the same steps used for
   `webhook.san-andreas-rp.co.uk`.
