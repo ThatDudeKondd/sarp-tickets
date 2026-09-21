@@ -1,3 +1,14 @@
+-- BASELINE MIGRATION — DO NOT run this as-is against a DB that already has
+-- these tables (e.g. production). It was generated from the local dev DB's
+-- existing (pre-Prisma-migrations) schema and was never executed there —
+-- it was recorded as already-applied via `prisma migrate resolve --applied
+-- 0_init`. Production's `sarp_tickets` DB is in the same pre-migration
+-- state (tables exist, no `_prisma_migrations` history), so before running
+-- `prisma migrate deploy` there, run the same
+-- `prisma migrate resolve --applied 0_init` step first, or these raw
+-- `CREATE TABLE` statements (no `IF NOT EXISTS`) will fail with
+-- "relation already exists".
+
 -- CreateSchema
 CREATE SCHEMA IF NOT EXISTS "public";
 
