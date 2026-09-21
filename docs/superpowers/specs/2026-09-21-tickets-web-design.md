@@ -54,12 +54,19 @@ Replaces `ticketShare.ts`'s current `shareTicketTranscript` /
 
 - NextAuth.js, Discord OAuth provider only.
 - Scopes: `identify`, `guilds.members.read` — this returns the caller's
-  guild member object (including roles) directly off their own OAuth
-  token via `GET /users/@me/guilds/{guild_id}/member`, so the web app
-  never needs a bot token.
-- Role tier is **re-fetched from Discord on every protected page load**,
-  not cached in the session — a demotion or role removal takes effect on
-  the next request, not just the next login.
+  guild member object (their role ID array) directly off their own OAuth
+  token via `GET /users/@me/guilds/{guild_id}/member`.
+- Role **position** (needed for "supervisor+") isn't in that scope's
+  response — it only lists role IDs the member holds, not server-wide
+  ordering. Getting positions requires `GET /guilds/{guild_id}/roles`, a
+  bot-token-only endpoint. The website holds the existing Discord bot
+  token read-only for this one call, caches the guild's role list
+  (id → position) in memory for a few minutes, and cross-references it
+  against the member's role IDs from the OAuth call.
+- Role tier is **re-fetched from Discord on every protected page load**
+  (member call always live; role-position cache is the only caching) —
+  a demotion or role removal takes effect on the next request, not just
+  the next login.
 - Per-ticket access check (server-side, before any HTML is sent to the
   client):
   1. `ticket.opener_id === viewer.id` → allowed, any tier.
@@ -68,9 +75,11 @@ Replaces `ticketShare.ts`'s current `shareTicketTranscript` /
   3. viewer's highest role position > `Supervisor_support_role`'s
      position → allowed (sees all tickets, any type).
   4. otherwise → `403`.
-- `General_support_role` / `Supervisor_support_role` are read from the
-  same per-guild config the bot already uses (`config.ts` /
-  `ROLE_SETTING_KEYS`) via the read-only DB connection — not duplicated.
+- `General_support_role` / `Supervisor_support_role` come from
+  `config.json` (git-tracked, mutated at runtime by the bot's config
+  panel — see `ARCHITECTURE.md`), **not** the DB. The website reads it
+  from a read-only bind-mount of the same host file the bot container
+  uses (`/opt/sarp-project/sarp-tickets/config.json`), never a copy.
 
 ## Site structure (Next.js, TypeScript, React, Tailwind — App Router)
 
@@ -85,6 +94,16 @@ Replaces `ticketShare.ts`'s current `shareTicketTranscript` /
 - `/staff` — search/filter table over tickets. General support sees
   `type = 'general'` only; supervisor+ sees all. Requires one of those two
   role tiers; otherwise redirects to `/tickets`.
+
+## Environment variables (`sarp-tickets-web`)
+
+- `DATABASE_URL` — Postgres connection string using the `sarp_tickets_web_ro` role.
+- `CONFIG_JSON_PATH` — path to the read-only bind-mounted `config.json` (defaults to `/app/config.json` inside the container).
+- `DISCORD_CLIENT_ID` / `DISCORD_CLIENT_SECRET` — OAuth app credentials (NextAuth Discord provider).
+- `DISCORD_BOT_TOKEN` — same bot token sarp-tickets already uses, read-only usage here (`GET /guilds/{guild_id}/roles` only).
+- `DISCORD_GUILD_ID` — the single guild this deployment serves.
+- `AUTH_SECRET` — NextAuth session encryption secret.
+- `INTERNAL_TRANSCRIPT_SECRET` — HMAC shared secret for the bot → website write path (paired with a same-named var added to sarp-tickets' `.env`).
 
 ## Deployment
 
