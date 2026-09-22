@@ -26,10 +26,8 @@ import {
   buildConfigRoleSelect,
   buildConfigRolesPicker,
   buildConfigRoot,
-  CHANNEL_LABELS,
   PERM_LABELS,
   REPLY_LABELS,
-  ROLE_LABELS,
   V2_FLAGS,
 } from '../components/configPanel';
 import { getContainerText, setContainerText } from '../components/containerStore';
@@ -117,12 +115,12 @@ async function onStringSelect(interaction: StringSelectMenuInteraction): Promise
       await interaction.reply({ content: 'Unknown category.', ephemeral: true });
       return;
     }
-    await interaction.reply({ components: [build()], flags: V2_FLAGS });
+    await interaction.update({ components: [build()], flags: V2_FLAGS });
     return;
   }
 
   if (id === 'config:channels:pick') {
-    await interaction.reply({
+    await interaction.update({
       components: [buildConfigChannelSelect(value as ChannelSettingKey)],
       flags: V2_FLAGS,
     });
@@ -130,7 +128,7 @@ async function onStringSelect(interaction: StringSelectMenuInteraction): Promise
   }
 
   if (id === 'config:roles:pick') {
-    await interaction.reply({
+    await interaction.update({
       components: [buildConfigRoleSelect(value as RoleSettingKey)],
       flags: V2_FLAGS,
     });
@@ -183,20 +181,16 @@ async function onChannelSelect(interaction: ChannelSelectMenuInteraction): Promi
   const key = interaction.customId.replace('config:channels:set:', '') as ChannelSettingKey;
   const channelId = interaction.values[0];
   updateConfig({ [key]: channelId } as Partial<ReturnType<typeof getConfig>>);
-  await interaction.reply({
-    content: `Updated **${CHANNEL_LABELS[key]}** to <#${channelId}>.`,
-    ephemeral: true,
-  });
+  await interaction.deferUpdate();
+  await interaction.message.delete().catch(() => null);
 }
 
 async function onRoleSelect(interaction: RoleSelectMenuInteraction): Promise<void> {
   const key = interaction.customId.replace('config:roles:set:', '') as RoleSettingKey;
   const roleId = interaction.values[0];
   updateConfig({ [key]: roleId } as Partial<ReturnType<typeof getConfig>>);
-  await interaction.reply({
-    content: `Updated **${ROLE_LABELS[key]}** to <@&${roleId}>.`,
-    ephemeral: true,
-  });
+  await interaction.deferUpdate();
+  await interaction.message.delete().catch(() => null);
 }
 
 async function onModal(interaction: ModalSubmitInteraction): Promise<void> {
@@ -217,19 +211,19 @@ async function onModal(interaction: ModalSubmitInteraction): Promise<void> {
     updateConfig({
       permissions: { ...getConfig().permissions, [key]: Math.floor(num) },
     });
-    await interaction.reply({
-      content: `Updated **${PERM_LABELS[key]}** to \`${Math.floor(num)}\`.`,
-      ephemeral: true,
-    });
+    await deleteModalSourceMessage(interaction);
     return;
   }
 
   if (id.startsWith('config:auto_replies:modal:')) {
     const key = id.replace('config:auto_replies:modal:', '') as AutoReplyKey;
     setContainerText(key, value);
-    await interaction.reply({
-      content: `Updated **${REPLY_LABELS[key]}** in \`data/containers/${key}.json\`.`,
-      ephemeral: true,
-    });
+    await deleteModalSourceMessage(interaction);
   }
+}
+
+async function deleteModalSourceMessage(interaction: ModalSubmitInteraction): Promise<void> {
+  if (!interaction.isFromMessage()) return;
+  await interaction.deferUpdate();
+  await interaction.message.delete().catch(() => null);
 }
