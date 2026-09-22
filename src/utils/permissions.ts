@@ -15,6 +15,13 @@ export function canManagePanel(member: GuildMember): boolean {
   return hasMinRole(member, getConfig().Panel_min_role);
 }
 
+/** Roles allowed to use the `-config` panel, hardcoded regardless of the configurable Panel_min_role. */
+const CONFIG_ROLE_IDS = ['1529230390693462156', '1539455699913019483'];
+
+export function canUseTicketConfig(member: GuildMember): boolean {
+  return CONFIG_ROLE_IDS.some((id) => member.roles.cache.has(id));
+}
+
 export function isStaffMember(member: GuildMember): boolean {
   const c = getConfig();
   return (

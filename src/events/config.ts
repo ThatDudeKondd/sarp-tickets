@@ -31,14 +31,59 @@ import {
   V2_FLAGS,
 } from '../components/configPanel';
 import { getContainerText, setContainerText } from '../components/containerStore';
-import { canManagePanel } from '../utils/permissions';
+import { canUseTicketConfig } from '../utils/permissions';
 import { logPrefixCommand } from '../services/commandLog';
+
+const CONFIG_TIMEOUT_MS = 5 * 60 * 1000;
+
+interface ConfigSession {
+  invokerId: string;
+  panelMessage: Message;
+  invokingMessage: Message;
+  timer: ReturnType<typeof setTimeout>;
+}
+
+/** Keyed by panel message ID — the panel is always edited in place, so the key never changes. */
+const sessions = new Map<string, ConfigSession>();
+
+function scheduleTimeout(panelMessageId: string): ReturnType<typeof setTimeout> {
+  return setTimeout(() => void endSession(panelMessageId), CONFIG_TIMEOUT_MS);
+}
+
+async function endSession(panelMessageId: string): Promise<void> {
+  const session = sessions.get(panelMessageId);
+  if (!session) return;
+  sessions.delete(panelMessageId);
+  clearTimeout(session.timer);
+  await session.panelMessage.delete().catch(() => null);
+  await session.invokingMessage.delete().catch(() => null);
+}
+
+function touchSession(panelMessageId: string): void {
+  const session = sessions.get(panelMessageId);
+  if (!session) return;
+  clearTimeout(session.timer);
+  session.timer = scheduleTimeout(panelMessageId);
+}
+
+function panelMessageId(
+  interaction:
+    | StringSelectMenuInteraction
+    | ChannelSelectMenuInteraction
+    | RoleSelectMenuInteraction
+    | ModalSubmitInteraction,
+): string | null {
+  if (interaction.isModalSubmit()) {
+    return interaction.isFromMessage() ? interaction.message.id : null;
+  }
+  return interaction.message.id;
+}
 
 export async function handleConfigPrefix(message: Message): Promise<boolean> {
   if (message.content.trim().toLowerCase() !== '-config') return false;
   if (!message.guild || !message.member) return true;
 
-  if (!canManagePanel(message.member)) {
+  if (!canUseTicketConfig(message.member)) {
     await message.reply('You do not have permission to use `-config`.');
     return true;
   }
@@ -47,9 +92,15 @@ export async function handleConfigPrefix(message: Message): Promise<boolean> {
     return true;
   }
 
-  await message.channel.send({
+  const panelMessage = await message.channel.send({
     components: [buildConfigRoot()],
     flags: V2_FLAGS,
+  });
+  sessions.set(panelMessage.id, {
+    invokerId: message.author.id,
+    panelMessage,
+    invokingMessage: message,
+    timer: scheduleTimeout(panelMessage.id),
   });
   void logPrefixCommand(message, '-config');
   return true;
@@ -73,11 +124,23 @@ export async function handleConfigInteraction(interaction: Interaction): Promise
     return true;
   }
 
+  const msgId = panelMessageId(interaction);
+  const session = msgId ? sessions.get(msgId) : undefined;
+  if (session && session.invokerId !== interaction.user.id) {
+    await interaction.reply({
+      content: 'Only the person who ran `-config` can use this.',
+      ephemeral: true,
+    });
+    return true;
+  }
+
   const member = await interaction.guild.members.fetch(interaction.user.id);
-  if (!canManagePanel(member)) {
+  if (!canUseTicketConfig(member)) {
     await interaction.reply({ content: 'You do not have permission.', ephemeral: true });
     return true;
   }
+
+  if (msgId) touchSession(msgId);
 
   if (interaction.isStringSelectMenu()) {
     await onStringSelect(interaction);
@@ -181,16 +244,14 @@ async function onChannelSelect(interaction: ChannelSelectMenuInteraction): Promi
   const key = interaction.customId.replace('config:channels:set:', '') as ChannelSettingKey;
   const channelId = interaction.values[0];
   updateConfig({ [key]: channelId } as Partial<ReturnType<typeof getConfig>>);
-  await interaction.deferUpdate();
-  await interaction.message.delete().catch(() => null);
+  await interaction.update({ components: [buildConfigRoot()], flags: V2_FLAGS });
 }
 
 async function onRoleSelect(interaction: RoleSelectMenuInteraction): Promise<void> {
   const key = interaction.customId.replace('config:roles:set:', '') as RoleSettingKey;
   const roleId = interaction.values[0];
   updateConfig({ [key]: roleId } as Partial<ReturnType<typeof getConfig>>);
-  await interaction.deferUpdate();
-  await interaction.message.delete().catch(() => null);
+  await interaction.update({ components: [buildConfigRoot()], flags: V2_FLAGS });
 }
 
 async function onModal(interaction: ModalSubmitInteraction): Promise<void> {
@@ -211,19 +272,18 @@ async function onModal(interaction: ModalSubmitInteraction): Promise<void> {
     updateConfig({
       permissions: { ...getConfig().permissions, [key]: Math.floor(num) },
     });
-    await deleteModalSourceMessage(interaction);
+    await returnToRoot(interaction);
     return;
   }
 
   if (id.startsWith('config:auto_replies:modal:')) {
     const key = id.replace('config:auto_replies:modal:', '') as AutoReplyKey;
     setContainerText(key, value);
-    await deleteModalSourceMessage(interaction);
+    await returnToRoot(interaction);
   }
 }
 
-async function deleteModalSourceMessage(interaction: ModalSubmitInteraction): Promise<void> {
+async function returnToRoot(interaction: ModalSubmitInteraction): Promise<void> {
   if (!interaction.isFromMessage()) return;
-  await interaction.deferUpdate();
-  await interaction.message.delete().catch(() => null);
+  await interaction.update({ components: [buildConfigRoot()], flags: V2_FLAGS });
 }
