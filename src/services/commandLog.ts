@@ -1,4 +1,4 @@
-import type { ChatInputCommandInteraction, Client, Message } from 'discord.js';
+import type { ChatInputCommandInteraction, Client } from 'discord.js';
 import { getConfig } from '../config';
 import { buildNamedContainer } from '../components/containerStore';
 import { V2_FLAGS } from '../components/builders';
@@ -69,13 +69,5 @@ export async function logSlashCommand(
     command: formatSlashCommand(interaction),
     userId: interaction.user.id,
     channelId: interaction.channelId,
-  });
-}
-
-export async function logPrefixCommand(message: Message, command: string): Promise<void> {
-  await logCommandExecuted(message.client, {
-    command,
-    userId: message.author.id,
-    channelId: message.channel.id,
   });
 }

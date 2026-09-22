@@ -6,7 +6,6 @@ import {
   Role,
   type ChatInputCommandInteraction,
   type Interaction,
-  type Message,
   type StringSelectMenuInteraction,
   type ButtonInteraction,
   type ModalSubmitInteraction,
@@ -33,50 +32,8 @@ import {
 import { closeTicket, isClosing } from '../services/close';
 import { blacklistUser } from '../services/blacklist';
 import { refreshAssistancePanel } from '../services/panelSchedule';
-import { logPrefixCommand, logSlashCommand } from '../services/commandLog';
-import { handleConfigInteraction, handleConfigPrefix } from './config';
-
-export async function handlePrefixCommand(message: Message): Promise<void> {
-  if (message.author.bot || !message.guild || !message.member) return;
-
-  if (await handleConfigPrefix(message)) return;
-
-  const content = message.content.trim();
-
-  if (content.toLowerCase() === '-panel tickets') {
-    if (!canManagePanel(message.member)) {
-      await message.reply('You do not have permission to send the ticket panel.');
-      return;
-    }
-    await refreshAssistancePanel(message.client);
-    await message.reply(
-      'Ticket panel refreshed. The Assistance channel now contains a single panel message.',
-    );
-    void logPrefixCommand(message, '-panel tickets');
-    return;
-  }
-
-  const blacklistMatch = content.match(/^-tickets\s+blacklist\s+(\d{17,20})$/i);
-  if (blacklistMatch) {
-    if (!canManagePanel(message.member)) {
-      await message.reply('You do not have permission to manage the ticket blacklist.');
-      return;
-    }
-    const userId = blacklistMatch[1];
-    if (await blacklistDb.isBlacklisted(userId)) {
-      await blacklistDb.remove(userId);
-      await message.reply(`Removed <@${userId}> from the ticket blacklist.`);
-      void logPrefixCommand(message, `-tickets blacklist ${userId}`);
-      return;
-    }
-    const user = await message.client.users.fetch(userId).catch(() => null);
-    await blacklistUser(message.client, userId, 'Manually blacklisted by staff', {
-      username: user?.username,
-    });
-    await message.reply(`Blacklisted <@${userId}> from tickets.`);
-    void logPrefixCommand(message, `-tickets blacklist ${userId}`);
-  }
-}
+import { logSlashCommand } from '../services/commandLog';
+import { handleConfigInteraction, handleConfigSlash } from './config';
 
 async function requireTicketChannel(interaction: Interaction) {
   if (!interaction.guild || !interaction.channel || !interaction.channel.isTextBased()) {
@@ -112,6 +69,10 @@ export async function handleInteraction(interaction: Interaction): Promise<void>
 
   if (interaction.isChatInputCommand()) {
     void logSlashCommand(interaction);
+    if (interaction.commandName === 'config') {
+      await handleConfigSlash(interaction);
+      return;
+    }
     await onSlash(interaction);
   }
 }
@@ -265,6 +226,57 @@ async function onButton(interaction: ButtonInteraction): Promise<void> {
 
 async function onSlash(interaction: ChatInputCommandInteraction): Promise<void> {
   const name = interaction.commandName;
+
+  if (name === 'panel' || name === 'blacklist') {
+    if (!interaction.guild) {
+      await interaction.reply({ content: 'Guild only.', ephemeral: true });
+      return;
+    }
+    const member = await interaction.guild.members.fetch(interaction.user.id);
+
+    if (name === 'panel') {
+      if (!canManagePanel(member)) {
+        await interaction.reply({
+          content: 'You do not have permission to send the ticket panel.',
+          ephemeral: true,
+        });
+        return;
+      }
+      await refreshAssistancePanel(interaction.client);
+      await interaction.reply({
+        content: 'Ticket panel refreshed. The Assistance channel now contains a single panel message.',
+        ephemeral: true,
+      });
+      return;
+    }
+
+    if (!canManagePanel(member)) {
+      await interaction.reply({
+        content: 'You do not have permission to manage the ticket blacklist.',
+        ephemeral: true,
+      });
+      return;
+    }
+    const target = interaction.options.getUser('user', true);
+    if (await blacklistDb.isBlacklisted(target.id)) {
+      await blacklistDb.remove(target.id);
+      await interaction.reply({
+        content: `Removed <@${target.id}> from the ticket blacklist.`,
+        ephemeral: true,
+        allowedMentions: { users: [] },
+      });
+      return;
+    }
+    await blacklistUser(interaction.client, target.id, 'Manually blacklisted by staff', {
+      username: target.username,
+    });
+    await interaction.reply({
+      content: `Blacklisted <@${target.id}> from tickets.`,
+      ephemeral: true,
+      allowedMentions: { users: [] },
+    });
+    return;
+  }
 
   const ticketCommands = new Set([
     'claim', 'unclaim', 'forceunclaim', 'close', 'closerequest', 'transfer',

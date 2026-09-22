@@ -4,6 +4,7 @@ import {
   TextInputBuilder,
   TextInputStyle,
   type ChannelSelectMenuInteraction,
+  type ChatInputCommandInteraction,
   type Interaction,
   type Message,
   type ModalSubmitInteraction,
@@ -32,14 +33,12 @@ import {
 } from '../components/configPanel';
 import { getContainerText, setContainerText } from '../components/containerStore';
 import { canUseTicketConfig } from '../utils/permissions';
-import { logPrefixCommand } from '../services/commandLog';
 
 const CONFIG_TIMEOUT_MS = 5 * 60 * 1000;
 
 interface ConfigSession {
   invokerId: string;
   panelMessage: Message;
-  invokingMessage: Message;
   timer: ReturnType<typeof setTimeout>;
 }
 
@@ -56,7 +55,6 @@ async function endSession(panelMessageId: string): Promise<void> {
   sessions.delete(panelMessageId);
   clearTimeout(session.timer);
   await session.panelMessage.delete().catch(() => null);
-  await session.invokingMessage.delete().catch(() => null);
 }
 
 function touchSession(panelMessageId: string): void {
@@ -79,31 +77,25 @@ function panelMessageId(
   return interaction.message.id;
 }
 
-export async function handleConfigPrefix(message: Message): Promise<boolean> {
-  if (message.content.trim().toLowerCase() !== '-config') return false;
-  if (!message.guild || !message.member) return true;
-
-  if (!canUseTicketConfig(message.member)) {
-    await message.reply('You do not have permission to use `-config`.');
-    return true;
+export async function handleConfigSlash(interaction: ChatInputCommandInteraction): Promise<void> {
+  if (!interaction.guild || !interaction.member) {
+    await interaction.reply({ content: 'Guild only.', ephemeral: true });
+    return;
   }
 
-  if (!message.channel.isTextBased() || !('send' in message.channel)) {
-    return true;
+  const member = await interaction.guild.members.fetch(interaction.user.id);
+  if (!canUseTicketConfig(member)) {
+    await interaction.reply({ content: 'You do not have permission to use `/config`.', ephemeral: true });
+    return;
   }
 
-  const panelMessage = await message.channel.send({
-    components: [buildConfigRoot()],
-    flags: V2_FLAGS,
-  });
+  await interaction.reply({ components: [buildConfigRoot()], flags: V2_FLAGS });
+  const panelMessage = await interaction.fetchReply();
   sessions.set(panelMessage.id, {
-    invokerId: message.author.id,
+    invokerId: interaction.user.id,
     panelMessage,
-    invokingMessage: message,
     timer: scheduleTimeout(panelMessage.id),
   });
-  void logPrefixCommand(message, '-config');
-  return true;
 }
 
 export async function handleConfigInteraction(interaction: Interaction): Promise<boolean> {
@@ -128,7 +120,7 @@ export async function handleConfigInteraction(interaction: Interaction): Promise
   const session = msgId ? sessions.get(msgId) : undefined;
   if (session && session.invokerId !== interaction.user.id) {
     await interaction.reply({
-      content: 'Only the person who ran `-config` can use this.',
+      content: 'Only the person who ran `/config` can use this.',
       ephemeral: true,
     });
     return true;

@@ -2,12 +2,9 @@ import type { Message } from 'discord.js';
 import { etaDb, ticketsDb } from '../db';
 import { handleAntiPing } from '../services/antiPing';
 import { isStaffMember } from '../utils/permissions';
-import { handlePrefixCommand } from './interactions';
 
 export async function handleMessageCreate(message: Message): Promise<void> {
   if (!message.guild || message.author.bot) return;
-
-  await handlePrefixCommand(message);
 
   if (!message.channel.isTextBased()) return;
   const ticket = await ticketsDb.getByChannel(message.channel.id);

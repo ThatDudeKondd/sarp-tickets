@@ -57,4 +57,16 @@ export const slashCommands = [
     .addStringOption((o) =>
       o.setName('input').setDescription('New channel name').setRequired(true),
     ),
+  new SlashCommandBuilder()
+    .setName('config')
+    .setDescription('Open the ticket bot configuration panel'),
+  new SlashCommandBuilder()
+    .setName('panel')
+    .setDescription('Refresh the ticket panel in the assistance channel'),
+  new SlashCommandBuilder()
+    .setName('blacklist')
+    .setDescription("Toggle a user's ticket blacklist status")
+    .addUserOption((o) =>
+      o.setName('user').setDescription('User to blacklist/unblacklist').setRequired(true),
+    ),
 ].map((c) => c.toJSON());
