@@ -23,25 +23,31 @@ export const CONTAINERS_DIR = path.join(process.cwd(), 'data', 'containers');
 
 export type ButtonStyleName = 'Primary' | 'Secondary' | 'Success' | 'Danger' | 'Link';
 
-export interface ContainerTextPart {
+/** Include only when `vars[when]` is truthy. Omit `whenNot` to include only when `vars[whenNot]` is falsy. */
+export interface ContainerPartCondition {
+  when?: string;
+  whenNot?: string;
+}
+
+export interface ContainerTextPart extends ContainerPartCondition {
   type: 'text';
   content: string;
 }
 
-export interface ContainerSeparatorPart {
+export interface ContainerSeparatorPart extends ContainerPartCondition {
   type: 'separator';
   divider?: boolean;
 }
 
-export interface ContainerBannerPart {
+export interface ContainerBannerPart extends ContainerPartCondition {
   type: 'banner';
 }
 
-export interface ContainerFooterPart {
+export interface ContainerFooterPart extends ContainerPartCondition {
   type: 'footer';
 }
 
-export interface ContainerFilePart {
+export interface ContainerFilePart extends ContainerPartCondition {
   type: 'file';
   url: string;
 }
@@ -183,6 +189,8 @@ export function buildContainerFromDef(
   const container = new ContainerBuilder();
 
   for (const part of def.parts) {
+    if ('when' in part && part.when && !truthy(vars[part.when])) continue;
+    if ('whenNot' in part && part.whenNot && truthy(vars[part.whenNot])) continue;
     switch (part.type) {
       case 'banner':
         if (config.banner) {

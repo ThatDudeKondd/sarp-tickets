@@ -8,11 +8,18 @@
     { "type": "separator" },
     {
       "type": "text",
-      "content": "**Transcript**"
+      "content": "**Transcript**",
+      "when": "hasAttachment"
     },
     {
       "type": "file",
-      "url": "attachment://{fileName}"
+      "url": "attachment://{fileName}",
+      "when": "hasAttachment"
+    },
+    {
+      "type": "text",
+      "content": "**Transcript**\nFailed to generate — see bot logs.",
+      "whenNot": "hasAttachment"
     }
   ]
 }

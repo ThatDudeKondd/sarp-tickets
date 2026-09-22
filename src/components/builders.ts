@@ -98,6 +98,7 @@ export function buildTranscriptSummary(opts: {
   openedAt: string;
   closedAt: string;
   fileName: string;
+  hasAttachment: boolean;
 }): ContainerBuilder {
   return buildNamedContainer('transcript', {
     channelName: opts.channelName,
@@ -108,6 +109,7 @@ export function buildTranscriptSummary(opts: {
     openedAt: opts.openedAt,
     closedAt: opts.closedAt,
     fileName: opts.fileName,
+    hasAttachment: opts.hasAttachment ? 'true' : '',
   });
 }
 
