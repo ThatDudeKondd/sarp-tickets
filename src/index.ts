@@ -67,6 +67,13 @@ client.once(Events.ClientReady, async (c) => {
   startPanelScheduler(c);
 });
 
+// Joining a new server: register commands there immediately.
+client.on(Events.GuildCreate, (guild) => {
+  void guild.commands
+    .set(slashCommands)
+    .catch((err) => console.error(`Failed to deploy slash commands to ${guild.id}:`, err));
+});
+
 client.on(Events.InteractionCreate, (interaction) => {
   void handleInteraction(interaction).catch((err) => {
     console.error("Interaction error:", err);
