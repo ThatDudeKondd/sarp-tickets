@@ -10,3 +10,7 @@ website/
 .serena/
 
 /src/generated/prisma
+
+# Local test environment
+.env.test
+config.test.json

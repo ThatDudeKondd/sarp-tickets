@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import dotenv from 'dotenv';
 
-dotenv.config({ path: path.join(process.cwd(), '.env') });
+dotenv.config({ path: process.env.DOTENV_CONFIG_PATH ?? path.join(process.cwd(), '.env') });
 
 export interface PermissionSettings {
   max_open_tickets: number;
@@ -39,7 +39,7 @@ const DEFAULT_PERMISSIONS: PermissionSettings = {
   close_delay_seconds: 3,
 };
 
-export const configPath = path.join(process.cwd(), 'config.json');
+export const configPath = process.env.CONFIG_PATH ?? path.join(process.cwd(), 'config.json');
 
 function req(raw: Record<string, unknown>, key: string): string {
   const value = String(raw[key] ?? '').trim();
