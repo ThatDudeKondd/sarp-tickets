@@ -44,7 +44,14 @@ export { V2_FLAGS };
 
 function currentSummary(): string {
   const c = getConfig();
+  const unset = [
+    ...Object.entries(CHANNEL_LABELS),
+    ...Object.entries(ROLE_LABELS),
+  ]
+    .filter(([key]) => !/^\d{17,20}$/.test(c[key as keyof typeof CHANNEL_LABELS | keyof typeof ROLE_LABELS]))
+    .map(([, label]) => label);
   return [
+    ...(unset.length ? [`⚠️ **Not set yet:** ${unset.join(', ')}`, ''] : []),
     '**Ticket Bot Configuration**',
     'Select a category to customize.',
     '',

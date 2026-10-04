@@ -1,4 +1,4 @@
-import type { Guild, GuildMember } from 'discord.js';
+import { PermissionFlagsBits, type Guild, type GuildMember } from 'discord.js';
 import { getConfig } from '../config';
 
 export function hasMinRole(member: GuildMember, minRoleId: string): boolean {
@@ -18,11 +18,17 @@ export function canManagePanel(member: GuildMember): boolean {
 /**
  * Roles allowed to use the `/config` panel come from `Config_roles` in config.json.
  * Deliberately not editable from the panel itself, so nobody can lock themselves in
- * or out through it. Falls back to the Panel_min_role hierarchy when unset.
+ * or out through it. Falls back to the Panel_min_role hierarchy when unset, and to
+ * server admins while Panel_min_role isn't a real role yet (fresh config.json).
  */
 export function canUseTicketConfig(member: GuildMember): boolean {
   const configRoles = getConfig().Config_roles;
-  if (!configRoles.length) return canManagePanel(member);
+  if (!configRoles.length) {
+    if (!member.guild.roles.cache.has(getConfig().Panel_min_role)) {
+      return member.permissions.has(PermissionFlagsBits.Administrator);
+    }
+    return canManagePanel(member);
+  }
   return configRoles.some((id) => member.roles.cache.has(id));
 }
 
