@@ -45,7 +45,8 @@ interface ConfigSession {
 const sessions = new Map<string, ConfigSession>();
 
 function scheduleTimeout(panelMessageId: string): ReturnType<typeof setTimeout> {
-  return setTimeout(() => void endSession(panelMessageId), CONFIG_TIMEOUT_MS);
+  // unref: an open panel must never keep the process alive on its own.
+  return setTimeout(() => void endSession(panelMessageId), CONFIG_TIMEOUT_MS).unref();
 }
 
 async function endSession(panelMessageId: string): Promise<void> {

@@ -4,6 +4,8 @@
   "description": "SARP Discord ticket bot",
   "main": "dist/index.js",
   "scripts": {
+    "test": "node --import tsx --import ./src/test/setup.ts --test \"src/**/*.test.ts\"",
+    "typecheck": "tsc -p tsconfig.test.json",
     "dev:test": "DOTENV_CONFIG_PATH=.env.test CONFIG_PATH=config.test.json node --import tsx src/index.ts",
     "db:push:test": "DOTENV_CONFIG_PATH=.env.test prisma db push && prisma generate",
     "build": "tsc",
