@@ -88,6 +88,8 @@ export interface ContainerButtonDef {
   when?: string;
   /** Include only when `vars[whenNot]` is falsy. */
   whenNot?: string;
+  /** Render disabled when `vars[disabledWhen]` is truthy. */
+  disabledWhen?: string;
 }
 
 export interface ContainerButtonsPart {
@@ -277,7 +279,8 @@ export function buildContainerFromDef(
           const style = STYLE_MAP[b.style] ?? ButtonStyle.Secondary;
           const btn = new ButtonBuilder()
             .setLabel(applyPlaceholders(b.label, vars))
-            .setStyle(style);
+            .setStyle(style)
+            .setDisabled(b.disabledWhen ? truthy(vars[b.disabledWhen]) : false);
           if (style === ButtonStyle.Link) {
             const url = applyPlaceholders(b.url ?? '', vars);
             if (!url) continue;

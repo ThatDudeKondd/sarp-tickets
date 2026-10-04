@@ -5,11 +5,28 @@
       "type": "text",
       "content": "**Set {label}**\nCurrent: {current}"
     },
-    { "type": "separator" },
+    {
+      "type": "separator"
+    },
     {
       "type": "role_select",
       "customId": "config:roles:set:{key}",
       "placeholder": "Select {label}"
+    },
+    {
+      "type": "buttons",
+      "buttons": [
+        {
+          "customId": "config:page:roles",
+          "label": "Back",
+          "style": "Secondary"
+        },
+        {
+          "customId": "config:cancel",
+          "label": "Cancel",
+          "style": "Danger"
+        }
+      ]
     }
   ]
 }

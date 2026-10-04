@@ -5,31 +5,40 @@
       "type": "text",
       "content": "{summary}"
     },
-    { "type": "separator" },
     {
-      "type": "string_select",
-      "customId": "config:root",
-      "placeholder": "Choose a settings category",
-      "options": [
+      "type": "separator"
+    },
+    {
+      "type": "buttons",
+      "buttons": [
         {
+          "customId": "config:page:channels",
           "label": "Channels",
-          "value": "channels",
-          "description": "Assistance, transcript, categories"
+          "style": "Primary",
+          "disabledWhen": "on_channels"
         },
         {
+          "customId": "config:page:roles",
           "label": "Roles",
-          "value": "roles",
-          "description": "Support, panel, and force-unclaim roles"
+          "style": "Primary",
+          "disabledWhen": "on_roles"
         },
         {
+          "customId": "config:page:permissions",
           "label": "Permissions",
-          "value": "permissions",
-          "description": "Limits, timers, delays"
+          "style": "Primary",
+          "disabledWhen": "on_permissions"
         },
         {
+          "customId": "config:page:auto_replies",
           "label": "Auto-Replies",
-          "value": "auto_replies",
-          "description": "Bot messages and close reasons"
+          "style": "Primary",
+          "disabledWhen": "on_auto_replies"
+        },
+        {
+          "customId": "config:cancel",
+          "label": "Cancel",
+          "style": "Danger"
         }
       ]
     }

@@ -5,12 +5,31 @@
       "type": "text",
       "content": "**Set {label}**\nCurrent: {current}"
     },
-    { "type": "separator" },
+    {
+      "type": "separator"
+    },
     {
       "type": "channel_select",
       "customId": "config:channels:set:{key}",
       "placeholder": "Select {label}",
-      "channelTypes": ["category"]
+      "channelTypes": [
+        "category"
+      ]
+    },
+    {
+      "type": "buttons",
+      "buttons": [
+        {
+          "customId": "config:page:channels",
+          "label": "Back",
+          "style": "Secondary"
+        },
+        {
+          "customId": "config:cancel",
+          "label": "Cancel",
+          "style": "Danger"
+        }
+      ]
     }
   ]
 }

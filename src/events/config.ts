@@ -3,6 +3,7 @@ import {
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
+  type ButtonInteraction,
   type ChannelSelectMenuInteraction,
   type ChatInputCommandInteraction,
   type Interaction,
@@ -20,13 +21,11 @@ import {
   type RoleSettingKey,
 } from '../config';
 import {
-  buildConfigAutoRepliesPicker,
   buildConfigChannelSelect,
-  buildConfigChannelsPicker,
-  buildConfigPermissionsPicker,
+  buildConfigPage,
   buildConfigRoleSelect,
-  buildConfigRolesPicker,
   buildConfigRoot,
+  type ConfigPage,
   PERM_LABELS,
   REPLY_LABELS,
   V2_FLAGS,
@@ -66,6 +65,7 @@ function touchSession(panelMessageId: string): void {
 
 function panelMessageId(
   interaction:
+    | ButtonInteraction
     | StringSelectMenuInteraction
     | ChannelSelectMenuInteraction
     | RoleSelectMenuInteraction
@@ -100,6 +100,7 @@ export async function handleConfigSlash(interaction: ChatInputCommandInteraction
 
 export async function handleConfigInteraction(interaction: Interaction): Promise<boolean> {
   if (
+    !interaction.isButton() &&
     !interaction.isStringSelectMenu() &&
     !interaction.isChannelSelectMenu() &&
     !interaction.isRoleSelectMenu() &&
@@ -134,6 +135,10 @@ export async function handleConfigInteraction(interaction: Interaction): Promise
 
   if (msgId) touchSession(msgId);
 
+  if (interaction.isButton()) {
+    await onButton(interaction);
+    return true;
+  }
   if (interaction.isStringSelectMenu()) {
     await onStringSelect(interaction);
     return true;
@@ -154,25 +159,27 @@ export async function handleConfigInteraction(interaction: Interaction): Promise
   return true;
 }
 
+const PAGES: readonly ConfigPage[] = ['channels', 'roles', 'permissions', 'auto_replies'];
+
+async function onButton(interaction: ButtonInteraction): Promise<void> {
+  const id = interaction.customId;
+
+  if (id === 'config:cancel') {
+    await interaction.deferUpdate();
+    if (sessions.has(interaction.message.id)) await endSession(interaction.message.id);
+    else await interaction.message.delete().catch(() => null);
+    return;
+  }
+
+  const page = id.replace('config:page:', '') as ConfigPage;
+  if (id.startsWith('config:page:') && PAGES.includes(page)) {
+    await interaction.update({ components: [buildConfigPage(page)], flags: V2_FLAGS });
+  }
+}
+
 async function onStringSelect(interaction: StringSelectMenuInteraction): Promise<void> {
   const id = interaction.customId;
   const value = interaction.values[0];
-
-  if (id === 'config:root') {
-    const map = {
-      channels: buildConfigChannelsPicker,
-      roles: buildConfigRolesPicker,
-      permissions: buildConfigPermissionsPicker,
-      auto_replies: buildConfigAutoRepliesPicker,
-    } as const;
-    const build = map[value as keyof typeof map];
-    if (!build) {
-      await interaction.reply({ content: 'Unknown category.', ephemeral: true });
-      return;
-    }
-    await interaction.update({ components: [build()], flags: V2_FLAGS });
-    return;
-  }
 
   if (id === 'config:channels:pick') {
     await interaction.update({
@@ -236,14 +243,14 @@ async function onChannelSelect(interaction: ChannelSelectMenuInteraction): Promi
   const key = interaction.customId.replace('config:channels:set:', '') as ChannelSettingKey;
   const channelId = interaction.values[0];
   updateConfig({ [key]: channelId } as Partial<ReturnType<typeof getConfig>>);
-  await interaction.update({ components: [buildConfigRoot()], flags: V2_FLAGS });
+  await interaction.update({ components: [buildConfigPage('channels')], flags: V2_FLAGS });
 }
 
 async function onRoleSelect(interaction: RoleSelectMenuInteraction): Promise<void> {
   const key = interaction.customId.replace('config:roles:set:', '') as RoleSettingKey;
   const roleId = interaction.values[0];
   updateConfig({ [key]: roleId } as Partial<ReturnType<typeof getConfig>>);
-  await interaction.update({ components: [buildConfigRoot()], flags: V2_FLAGS });
+  await interaction.update({ components: [buildConfigPage('roles')], flags: V2_FLAGS });
 }
 
 async function onModal(interaction: ModalSubmitInteraction): Promise<void> {
@@ -264,18 +271,18 @@ async function onModal(interaction: ModalSubmitInteraction): Promise<void> {
     updateConfig({
       permissions: { ...getConfig().permissions, [key]: Math.floor(num) },
     });
-    await returnToRoot(interaction);
+    await returnToPage(interaction, 'permissions');
     return;
   }
 
   if (id.startsWith('config:auto_replies:modal:')) {
     const key = id.replace('config:auto_replies:modal:', '') as AutoReplyKey;
     setContainerText(key, value);
-    await returnToRoot(interaction);
+    await returnToPage(interaction, 'auto_replies');
   }
 }
 
-async function returnToRoot(interaction: ModalSubmitInteraction): Promise<void> {
+async function returnToPage(interaction: ModalSubmitInteraction, page: ConfigPage): Promise<void> {
   if (!interaction.isFromMessage()) return;
-  await interaction.update({ components: [buildConfigRoot()], flags: V2_FLAGS });
+  await interaction.update({ components: [buildConfigPage(page)], flags: V2_FLAGS });
 }

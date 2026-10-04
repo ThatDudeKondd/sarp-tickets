@@ -3,20 +3,80 @@
   "parts": [
     {
       "type": "text",
-      "content": "**Channels**\nSelect which channel/category to update."
+      "content": "**Channels**\n{summary}\n\nSelect which setting to update."
     },
-    { "type": "separator" },
+    {
+      "type": "separator"
+    },
     {
       "type": "string_select",
       "customId": "config:channels:pick",
       "placeholder": "Which channel setting?",
       "options": [
-        { "label": "Assistance Channel", "value": "Assistance_Channel", "description": "{Assistance_Channel}" },
-        { "label": "Transcript Channel", "value": "Transcript_Channel", "description": "{Transcript_Channel}" },
-        { "label": "Blacklist Alert Channel", "value": "Blacklist_Alert_Channel", "description": "{Blacklist_Alert_Channel}" },
-        { "label": "Command Log Channel", "value": "Command_Log_Channel", "description": "{Command_Log_Channel}" },
-        { "label": "General Category", "value": "General_category", "description": "{General_category}" },
-        { "label": "Supervisor Category", "value": "Supervisor_category", "description": "{Supervisor_category}" }
+        {
+          "label": "Assistance Channel",
+          "value": "Assistance_Channel",
+          "description": "{Assistance_Channel}"
+        },
+        {
+          "label": "Transcript Channel",
+          "value": "Transcript_Channel",
+          "description": "{Transcript_Channel}"
+        },
+        {
+          "label": "Blacklist Alert Channel",
+          "value": "Blacklist_Alert_Channel",
+          "description": "{Blacklist_Alert_Channel}"
+        },
+        {
+          "label": "Command Log Channel",
+          "value": "Command_Log_Channel",
+          "description": "{Command_Log_Channel}"
+        },
+        {
+          "label": "General Category",
+          "value": "General_category",
+          "description": "{General_category}"
+        },
+        {
+          "label": "Supervisor Category",
+          "value": "Supervisor_category",
+          "description": "{Supervisor_category}"
+        }
+      ]
+    },
+    {
+      "type": "buttons",
+      "buttons": [
+        {
+          "customId": "config:page:channels",
+          "label": "Channels",
+          "style": "Primary",
+          "disabledWhen": "on_channels"
+        },
+        {
+          "customId": "config:page:roles",
+          "label": "Roles",
+          "style": "Primary",
+          "disabledWhen": "on_roles"
+        },
+        {
+          "customId": "config:page:permissions",
+          "label": "Permissions",
+          "style": "Primary",
+          "disabledWhen": "on_permissions"
+        },
+        {
+          "customId": "config:page:auto_replies",
+          "label": "Auto-Replies",
+          "style": "Primary",
+          "disabledWhen": "on_auto_replies"
+        },
+        {
+          "customId": "config:cancel",
+          "label": "Cancel",
+          "style": "Danger"
+        }
       ]
     }
   ]

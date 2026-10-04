@@ -42,18 +42,26 @@ export const REPLY_LABELS: Record<AutoReplyKey, string> = {
 
 export { V2_FLAGS };
 
+const SNOWFLAKE = /^\d{17,20}$/;
+
+function mentionOrUnset(id: string, sigil: '#' | '@&'): string {
+  return SNOWFLAKE.test(id) ? `<${sigil}${id}>` : '*not set*';
+}
+
+export type ConfigPage = 'channels' | 'roles' | 'permissions' | 'auto_replies';
+
 function currentSummary(): string {
   const c = getConfig();
   const unset = [
     ...Object.entries(CHANNEL_LABELS),
     ...Object.entries(ROLE_LABELS),
   ]
-    .filter(([key]) => !/^\d{17,20}$/.test(c[key as keyof typeof CHANNEL_LABELS | keyof typeof ROLE_LABELS]))
+    .filter(([key]) => !SNOWFLAKE.test(c[key as keyof typeof CHANNEL_LABELS | keyof typeof ROLE_LABELS]))
     .map(([, label]) => label);
   return [
     ...(unset.length ? [`⚠️ **Not set yet:** ${unset.join(', ')}`, ''] : []),
     '**Ticket Bot Configuration**',
-    'Select a category to customize.',
+    'Pick a page below to customize.',
     '',
     `- Assistance: <#${c.Assistance_Channel}>`,
     `- Transcript: <#${c.Transcript_Channel}>`,
@@ -72,6 +80,10 @@ export function buildConfigRoot() {
 export function buildConfigChannelsPicker() {
   const c = getConfig();
   return buildNamedContainer('config_channels', {
+    on_channels: 'true',
+    summary: (Object.keys(CHANNEL_LABELS) as ChannelSettingKey[])
+      .map((key) => `- ${CHANNEL_LABELS[key]}: ${mentionOrUnset(c[key], '#')}`)
+      .join('\n'),
     Assistance_Channel: c.Assistance_Channel,
     Transcript_Channel: c.Transcript_Channel,
     Blacklist_Alert_Channel: c.Blacklist_Alert_Channel,
@@ -93,6 +105,10 @@ export function buildConfigChannelSelect(key: ChannelSettingKey) {
 export function buildConfigRolesPicker() {
   const c = getConfig();
   return buildNamedContainer('config_roles', {
+    on_roles: 'true',
+    summary: (Object.keys(ROLE_LABELS) as RoleSettingKey[])
+      .map((key) => `- ${ROLE_LABELS[key]}: ${mentionOrUnset(c[key], '@&')}`)
+      .join('\n'),
     General_support_role: c.General_support_role,
     Supervisor_support_role: c.Supervisor_support_role,
     Panel_min_role: c.Panel_min_role,
@@ -112,6 +128,7 @@ export function buildConfigRoleSelect(key: RoleSettingKey) {
 export function buildConfigPermissionsPicker() {
   const p = getConfig().permissions;
   return buildNamedContainer('config_permissions', {
+    on_permissions: 'true',
     summary: [
       '**Permissions**',
       `Max open tickets: **${p.max_open_tickets}**`,
@@ -130,9 +147,18 @@ export function buildConfigPermissionsPicker() {
 
 export function buildConfigAutoRepliesPicker() {
   const keys = Object.keys(REPLY_LABELS) as AutoReplyKey[];
-  const vars: Record<string, string> = {};
+  const vars: Record<string, string> = { on_auto_replies: 'true' };
   for (const key of keys) {
     vars[`${key}_preview`] = getContainerText(key).slice(0, 90);
   }
   return buildNamedContainer('config_auto_replies', vars);
+}
+
+export function buildConfigPage(page: ConfigPage) {
+  return {
+    channels: buildConfigChannelsPicker,
+    roles: buildConfigRolesPicker,
+    permissions: buildConfigPermissionsPicker,
+    auto_replies: buildConfigAutoRepliesPicker,
+  }[page]();
 }
