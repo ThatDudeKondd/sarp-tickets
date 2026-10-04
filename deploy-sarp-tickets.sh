@@ -15,24 +15,29 @@ BOT_DIR="$ROOT_DIR/sarp-tickets"
 DJSKO_DIR="$ROOT_DIR/djsko"
 BRANCH="main"
 
-CHANGED=0
+# Records the bot+djsko commits of the last SUCCESSFUL build. Deciding from
+# this (not from "did git pull bring anything") means a build that failed
+# after pulling is retried next run instead of being skipped forever.
+STATE_FILE="$ROOT_DIR/.deployed-sarp-tickets"
 
 for REPO_DIR in "$BOT_DIR" "$DJSKO_DIR"; do
   cd "$REPO_DIR"
-  git fetch origin "$BRANCH"
-  LOCAL=$(git rev-parse HEAD)
-  REMOTE=$(git rev-parse origin/"$BRANCH")
-  if [ "$LOCAL" != "$REMOTE" ]; then
-    echo "Changes found in $(basename "$REPO_DIR") ($LOCAL -> $REMOTE), pulling..."
-    git pull origin "$BRANCH"
-    CHANGED=1
+  # Hand edits on the server (chmod, npm install, ...) used to make every
+  # pull fail. Stash them instead; `git stash list` still has them.
+  if ! git diff --quiet || ! git diff --cached --quiet; then
+    echo "Stashing local changes in $(basename "$REPO_DIR"):"
+    git status --short --untracked-files=no
+    git stash push -m "deploy auto-stash $(date -u +%FT%TZ)"
   fi
+  git pull --ff-only origin "$BRANCH"
 done
 
-if [ "$CHANGED" -eq 0 ]; then
-  echo "No changes in either repo, nothing to deploy."
+CURRENT="$(git -C "$BOT_DIR" rev-parse HEAD) $(git -C "$DJSKO_DIR" rev-parse HEAD)"
+if [ -f "$STATE_FILE" ] && [ "$(cat "$STATE_FILE")" = "$CURRENT" ]; then
+  echo "Already deployed $CURRENT, nothing to do."
   exit 0
 fi
+echo "Deploying $CURRENT"
 
 cd "$ROOT_DIR"
 docker build -f sarp-tickets/Dockerfile -t sarp-tickets:latest .
@@ -46,4 +51,5 @@ docker run --rm --network host --env-file sarp-tickets/.env sarp-tickets:latest 
 
 systemctl --user restart sarp-tickets.service
 
+echo "$CURRENT" > "$STATE_FILE"
 echo "Deploy complete."
