@@ -15,11 +15,15 @@ export function canManagePanel(member: GuildMember): boolean {
   return hasMinRole(member, getConfig().Panel_min_role);
 }
 
-/** Roles allowed to use the `/config` panel, hardcoded regardless of the configurable Panel_min_role. */
-const CONFIG_ROLE_IDS = ['1529230390693462156', '1539455699913019483'];
-
+/**
+ * Roles allowed to use the `/config` panel come from `Config_roles` in config.json.
+ * Deliberately not editable from the panel itself, so nobody can lock themselves in
+ * or out through it. Falls back to the Panel_min_role hierarchy when unset.
+ */
 export function canUseTicketConfig(member: GuildMember): boolean {
-  return CONFIG_ROLE_IDS.some((id) => member.roles.cache.has(id));
+  const configRoles = getConfig().Config_roles;
+  if (!configRoles.length) return canManagePanel(member);
+  return configRoles.some((id) => member.roles.cache.has(id));
 }
 
 export function isStaffMember(member: GuildMember): boolean {

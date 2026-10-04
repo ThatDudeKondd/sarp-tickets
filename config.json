@@ -12,6 +12,10 @@
     "Panel_min_role": "1529230390693462156",
     "Force_unclaim_role": "1529230627780690130",
     "Blacklist_Alert_Role": "1529230390693462156",
+    "Config_roles": [
+        "1529230390693462156",
+        "1539455699913019483"
+    ],
     "permissions": {
         "max_open_tickets": 3,
         "inactivity_checkup_hours": 24,

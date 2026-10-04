@@ -30,7 +30,7 @@ export async function closeTicket(
   try {
     if (options?.delay !== false) {
       await channel.send({
-        components: [buildClosingNotice(3)],
+        components: [buildClosingNotice()],
         flags: V2_FLAGS,
       });
       await new Promise((r) => setTimeout(r, closeDelayMs()));

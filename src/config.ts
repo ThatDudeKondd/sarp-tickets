@@ -26,6 +26,8 @@ export interface BotConfig {
   Panel_min_role: string;
   Force_unclaim_role: string;
   Blacklist_Alert_Role: string;
+  /** Roles allowed to use `/config`. Empty = anyone at or above Panel_min_role. */
+  Config_roles: string[];
   permissions: PermissionSettings;
 }
 
@@ -65,6 +67,9 @@ function loadRaw(): BotConfig {
     Blacklist_Alert_Role:
       String(raw.Blacklist_Alert_Role ?? raw.Panel_min_role ?? '').trim() ||
       req(raw, 'Panel_min_role'),
+    Config_roles: Array.isArray(raw.Config_roles)
+      ? raw.Config_roles.map((id) => String(id).trim()).filter(Boolean)
+      : [],
     permissions: perms,
   };
 }
@@ -96,10 +101,21 @@ export function updateConfig(patch: Partial<BotConfig>): BotConfig {
   return next;
 }
 
+function parseIdList(value: string | undefined): string[] {
+  return (value ?? '')
+    .split(',')
+    .map((id) => id.trim())
+    .filter(Boolean);
+}
+
 export const env = {
   token: process.env.SARP_TICKETS_BOT_TOKEN?.replace(/^"|"$/g, '') ?? '',
   clientId: process.env.SARP_TICKETS_CLIENT_ID?.trim() ?? '',
   bloxlinkApiKey: process.env.BLOXLINK_API_KEY?.trim() ?? '',
+  /** Discord user IDs allowed to use the djsko (`.jsk`) owner console. */
+  jskOwners: parseIdList(process.env.JSK_OWNERS),
+  /** Subset of owners allowed to run `.jsk sh` on the host. */
+  jskShellOwners: parseIdList(process.env.JSK_SHELL_OWNERS),
 };
 
 if (!env.token) throw new Error('Missing SARP_TICKETS_BOT_TOKEN');

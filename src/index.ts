@@ -28,11 +28,24 @@ const client = new Client({
   partials: [Partials.Channel, Partials.Message, Partials.GuildMember],
 });
 
+// djsko treats an empty owner list as "fall back to the application owner",
+// so a missing env var would silently widen access. A placeholder ID that
+// matches no real user keeps the console closed instead.
+const NO_OWNERS = ["0"];
+if (!env.jskOwners.length || !env.jskShellOwners.length) {
+  console.warn(
+    "JSK_OWNERS / JSK_SHELL_OWNERS not set -- the jsk console is disabled for anyone not listed.",
+  );
+}
+
 const jsk = new Jishaku(client, {
   prefix: ".", // Root command becomes `.jsk`. Default: '.'
-  owners: ["726507399640252416", "1383717448804470817", "1092489655888379915"], // Optional; defaults to the application owner/team.
-  shellOwners: ["726507399640252416"],
+  owners: env.jskOwners.length ? env.jskOwners : NO_OWNERS,
+  shellOwners: env.jskShellOwners.length ? env.jskShellOwners : NO_OWNERS,
   encoding: "UTF-8", // Use 'Shift_JIS' for Japanese Windows shell output.
+  // Redacts env secrets from everything jsk sends -- including `.jsk update`'s
+  // deploy output, which echoes docker/npm logs into the channel.
+  security: true,
   updateCommand: "/opt/sarp-project/sarp-tickets/deploy-sarp-tickets.sh",
   restartCommand: "systemctl --user restart sarp-tickets.service",
 });
