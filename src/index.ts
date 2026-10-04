@@ -48,6 +48,7 @@ const jsk = new Jishaku(client, {
   security: true,
   updateCommand: "/opt/sarp-project/sarp-tickets/deploy-sarp-tickets.sh",
   restartCommand: "systemctl --user restart sarp-tickets.service",
+  promoteCommand: "/opt/sarp-project/sarp-tickets/promote-sarp-tickets.sh",
 });
 
 client.once(Events.ClientReady, async (c) => {
