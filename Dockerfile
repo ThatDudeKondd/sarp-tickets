@@ -14,7 +14,9 @@ RUN npm run db:gen --workspace=sarp-tickets
 RUN npm run build --workspace=sarp-tickets
 
 FROM node:22-alpine
-RUN apk add --no-cache git bash openssh-client
+RUN apk add --no-cache git bash openssh-client coreutils \
+ && addgroup -g 1001 sarp \
+ && adduser -D -u 1001 -G sarp -h /home/sarp sarp
 WORKDIR /app
 ENV NODE_ENV=production
 
