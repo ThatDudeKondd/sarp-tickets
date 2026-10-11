@@ -1,7 +1,7 @@
 # Build context must be the repo root (../), not this directory -- sarp-tickets
 # is an npm workspace member and depends on the sibling djsko package.
 # e.g. docker build -f sarp-tickets/Dockerfile . (from /opt/sarp-project)
-FROM node:22-alpine AS builder
+FROM node:22-alpine
 RUN apk add --no-cache git bash openssh-client
 WORKDIR /app
 ENV NODE_ENV=production
