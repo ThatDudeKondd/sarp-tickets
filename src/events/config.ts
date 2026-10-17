@@ -21,6 +21,7 @@ import {
   type PermissionSettingKey,
   type RoleSettingKey,
 } from '../config';
+import { metaDb } from '../db';
 import {
   buildConfigChannelSelect,
   buildConfigPage,
@@ -252,6 +253,7 @@ async function onRoleSelect(interaction: RoleSelectMenuInteraction): Promise<voi
   const key = interaction.customId.replace('config:roles:set:', '') as RoleSettingKey;
   const roleId = interaction.values[0];
   updateConfig({ [key]: roleId } as Partial<ReturnType<typeof getConfig>>);
+  await metaDb.publishStaffRoles().catch((err) => console.error('Failed to publish staff roles:', err));
   await interaction.update({ components: [buildConfigPage('roles')], flags: V2_FLAGS });
 }
 

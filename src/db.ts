@@ -1,5 +1,5 @@
 import { prisma } from './database/client';
-import { ETA_MIN_SAMPLES, type TicketType } from './config';
+import { ETA_MIN_SAMPLES, getConfig, type TicketType } from './config';
 
 // Prisma stores epoch-ms timestamps as BigInt (Postgres int4 overflows at ~2^31,
 // well below current epoch ms). Converted to number at this boundary so every
@@ -323,6 +323,13 @@ export const metaDb = {
       create: { key, value },
       update: { value },
     });
+  },
+
+  /** sarp-tickets-web reads the staff role IDs from here; it can't see config.json. */
+  async publishStaffRoles(): Promise<void> {
+    const { General_support_role, Supervisor_support_role } = getConfig();
+    await metaDb.set('General_support_role', General_support_role);
+    await metaDb.set('Supervisor_support_role', Supervisor_support_role);
   },
 };
 

@@ -9,6 +9,7 @@ import {
 } from "discord.js";
 import { env } from "./config";
 import { connectDatabase, disconnectDatabase } from "./database/client";
+import { metaDb } from "./db";
 import { slashCommands } from "./commands/slash";
 import { handleInteraction } from "./events/interactions";
 import { handleMessageCreate } from "./events/messages";
@@ -68,6 +69,7 @@ client.once(Events.ClientReady, async (c) => {
   }
   startInactivityScheduler(c);
   startPanelScheduler(c);
+  await metaDb.publishStaffRoles().catch((err) => console.error("Failed to publish staff roles:", err));
 });
 
 // Joining a new server: register commands there immediately.
