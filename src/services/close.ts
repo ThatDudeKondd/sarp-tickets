@@ -1,5 +1,5 @@
 import discordTranscripts, { ExportReturnType } from 'discord-html-transcripts-v2';
-import { AttachmentBuilder, type TextChannel } from 'discord.js';
+import type { TextChannel } from 'discord.js';
 import { closeDelayMs, getConfig } from '../config';
 import {
   buildClosingNotice,
@@ -7,7 +7,7 @@ import {
   V2_FLAGS,
 } from '../components/builders';
 import { ticketsDb, type TicketRow } from '../db';
-import { shareTicketTranscript } from './ticketShare';
+import { shareTicketTranscript, transcriptUrl } from './ticketShare';
 import { formatGmt } from '../utils/permissions';
 
 const closing = new Set<string>();
@@ -42,23 +42,20 @@ export async function closeTicket(
     const closed = await ticketsDb.close(channel.id, closedById, closeReason || 'No reason provided');
     if (!closed) return;
 
-    // HTML from discord-html-transcripts — attached in Discord and shared online.
-    // Rendering can throw on certain message content (known upstream bug); a
-    // transcript failure must not leave the ticket closed with an orphaned
-    // channel, so it's isolated from the rest of the close flow.
-    const fileName = `transcript-${channel.name}.html`;
-    let attachment: AttachmentBuilder | null = null;
+    // HTML from discord-html-transcripts, stored by sarp-tickets-web and linked
+    // from Discord. Rendering can throw on certain message content (known
+    // upstream bug); a transcript failure must not leave the ticket closed with
+    // an orphaned channel, so it's isolated from the rest of the close flow.
+    let webUrl = '';
     try {
       const html = (await discordTranscripts.createTranscript(channel, {
         limit: -1,
-        filename: fileName,
         saveImages: false,
         poweredBy: false,
         returnType: ExportReturnType.String,
       })) as string;
 
-      await shareTicketTranscript(closed.id, html);
-      attachment = new AttachmentBuilder(Buffer.from(html, 'utf8'), { name: fileName });
+      if (await shareTicketTranscript(closed.id, html)) webUrl = transcriptUrl(closed.id);
     } catch (err) {
       console.error('Transcript generation failed, closing without it:', err);
     }
@@ -82,13 +79,11 @@ export async function closeTicket(
         openingReason: closed.reason,
         openedAt: formatGmt(closed.opened_at),
         closedAt: formatGmt(closed.closed_at ?? Date.now()),
-        fileName,
-        hasAttachment: attachment !== null,
+        transcriptUrl: webUrl,
       });
 
       await transcriptChannel.send({
         components: [summary],
-        files: attachment ? [attachment] : [],
         flags: V2_FLAGS,
       });
     }

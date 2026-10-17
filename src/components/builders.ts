@@ -97,8 +97,8 @@ export function buildTranscriptSummary(opts: {
   openingReason: string;
   openedAt: string;
   closedAt: string;
-  fileName: string;
-  hasAttachment: boolean;
+  /** sarp-tickets-web page for the transcript; empty when generating/storing it failed. */
+  transcriptUrl: string;
 }): ContainerBuilder {
   return buildNamedContainer('transcript', {
     channelName: opts.channelName,
@@ -108,8 +108,7 @@ export function buildTranscriptSummary(opts: {
     openingReason: opts.openingReason,
     openedAt: opts.openedAt,
     closedAt: opts.closedAt,
-    fileName: opts.fileName,
-    hasAttachment: opts.hasAttachment ? 'true' : '',
+    transcriptUrl: opts.transcriptUrl,
   });
 }
 

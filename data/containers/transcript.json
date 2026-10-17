@@ -7,19 +7,15 @@
     },
     { "type": "separator" },
     {
-      "type": "text",
-      "content": "**Transcript**",
-      "when": "hasAttachment"
-    },
-    {
-      "type": "file",
-      "url": "attachment://{fileName}",
-      "when": "hasAttachment"
+      "type": "buttons",
+      "buttons": [
+        { "label": "View transcript", "style": "Link", "url": "{transcriptUrl}", "when": "transcriptUrl" }
+      ]
     },
     {
       "type": "text",
       "content": "**Transcript**\nFailed to generate — see bot logs.",
-      "whenNot": "hasAttachment"
+      "whenNot": "transcriptUrl"
     }
   ]
 }
