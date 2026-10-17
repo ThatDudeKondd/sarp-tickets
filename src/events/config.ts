@@ -1,5 +1,6 @@
 import {
   ActionRowBuilder,
+  MessageFlags,
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
@@ -80,13 +81,13 @@ function panelMessageId(
 
 export async function handleConfigSlash(interaction: ChatInputCommandInteraction): Promise<void> {
   if (!interaction.guild || !interaction.member) {
-    await interaction.reply({ content: 'Guild only.', ephemeral: true });
+    await interaction.reply({ content: 'Guild only.', flags: MessageFlags.Ephemeral });
     return;
   }
 
   const member = await interaction.guild.members.fetch(interaction.user.id);
   if (!canUseTicketConfig(member)) {
-    await interaction.reply({ content: 'You do not have permission to use `/config`.', ephemeral: true });
+    await interaction.reply({ content: 'You do not have permission to use `/config`.', flags: MessageFlags.Ephemeral });
     return;
   }
 
@@ -114,7 +115,7 @@ export async function handleConfigInteraction(interaction: Interaction): Promise
   if (!id.startsWith('config:')) return false;
 
   if (!interaction.guild || !interaction.member) {
-    await interaction.reply({ content: 'Guild only.', ephemeral: true });
+    await interaction.reply({ content: 'Guild only.', flags: MessageFlags.Ephemeral });
     return true;
   }
 
@@ -123,14 +124,14 @@ export async function handleConfigInteraction(interaction: Interaction): Promise
   if (session && session.invokerId !== interaction.user.id) {
     await interaction.reply({
       content: 'Only the person who ran `/config` can use this.',
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
     return true;
   }
 
   const member = await interaction.guild.members.fetch(interaction.user.id);
   if (!canUseTicketConfig(member)) {
-    await interaction.reply({ content: 'You do not have permission.', ephemeral: true });
+    await interaction.reply({ content: 'You do not have permission.', flags: MessageFlags.Ephemeral });
     return true;
   }
 
@@ -262,11 +263,11 @@ async function onModal(interaction: ModalSubmitInteraction): Promise<void> {
     const key = id.replace('config:permissions:modal:', '') as PermissionSettingKey;
     const num = Number(value);
     if (!Number.isFinite(num) || num < 0) {
-      await interaction.reply({ content: 'Enter a valid non-negative number.', ephemeral: true });
+      await interaction.reply({ content: 'Enter a valid non-negative number.', flags: MessageFlags.Ephemeral });
       return;
     }
     if (key === 'max_open_tickets' && (num < 1 || num > 25)) {
-      await interaction.reply({ content: 'Max open tickets must be 1–25.', ephemeral: true });
+      await interaction.reply({ content: 'Max open tickets must be 1–25.', flags: MessageFlags.Ephemeral });
       return;
     }
     updateConfig({

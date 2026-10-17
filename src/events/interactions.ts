@@ -1,4 +1,5 @@
 import {
+  MessageFlags,
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
@@ -96,7 +97,7 @@ async function onPanelSelect(interaction: StringSelectMenuInteraction): Promise<
 }
 
 async function onReasonModal(interaction: ModalSubmitInteraction): Promise<void> {
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const type = interaction.customId.replace('ticket:reason:', '') as TicketType;
   const reason = interaction.fields.getTextInputValue('reason').trim();
   if (!interaction.guild || !interaction.member) {
@@ -123,11 +124,11 @@ async function onReasonModal(interaction: ModalSubmitInteraction): Promise<void>
 async function onCloseReasonModal(interaction: ModalSubmitInteraction): Promise<void> {
   const ctx = await requireTicketChannel(interaction);
   if (!ctx) {
-    await interaction.reply({ content: 'Not a ticket channel.', ephemeral: true });
+    await interaction.reply({ content: 'Not a ticket channel.', flags: MessageFlags.Ephemeral });
     return;
   }
   const reason = interaction.fields.getTextInputValue('reason').trim() || 'No reason provided';
-  await interaction.reply({ content: 'Closing…', ephemeral: true });
+  await interaction.reply({ content: 'Closing…', flags: MessageFlags.Ephemeral });
   await closeTicket(ctx.channel, ctx.ticket, interaction.user.id, reason);
 }
 
@@ -139,11 +140,11 @@ async function onButton(interaction: ButtonInteraction): Promise<void> {
       id === 'ticket:closerequest:accept' || id === 'ticket:closerequest:deny') {
     const ctx = await requireTicketChannel(interaction);
     if (!ctx) {
-      await interaction.reply({ content: 'Not an open ticket.', ephemeral: true });
+      await interaction.reply({ content: 'Not an open ticket.', flags: MessageFlags.Ephemeral });
       return;
     }
     if (isClosing(ctx.channel.id)) {
-      await interaction.reply({ content: 'Ticket is already closing.', ephemeral: true });
+      await interaction.reply({ content: 'Ticket is already closing.', flags: MessageFlags.Ephemeral });
       return;
     }
 
@@ -152,14 +153,14 @@ async function onButton(interaction: ButtonInteraction): Promise<void> {
     const ticket = (await ticketsDb.getByChannel(ctx.channel.id)) ?? ctx.ticket;
 
     if (id === 'ticket:claim') {
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
       const result = await claimTicket(ticket, member, ctx.channel);
       await interaction.editReply(result.ok ? 'Claimed.' : result.error);
       return;
     }
 
     if (id === 'ticket:unclaim') {
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
       if (ticket.claimed_by !== member.id) {
         await interaction.editReply('Only the claimant can unclaim. Use `/forceunclaim` if you have permission.');
         return;
@@ -203,7 +204,7 @@ async function onButton(interaction: ButtonInteraction): Promise<void> {
 
     if (id === 'ticket:closerequest:accept') {
       if (interaction.user.id !== ctx.ticket.opener_id) {
-        await interaction.reply({ content: 'Only the opener can accept.', ephemeral: true });
+        await interaction.reply({ content: 'Only the opener can accept.', flags: MessageFlags.Ephemeral });
         return;
       }
       await interaction.deferUpdate().catch(() => null);
@@ -213,7 +214,7 @@ async function onButton(interaction: ButtonInteraction): Promise<void> {
 
     if (id === 'ticket:closerequest:deny') {
       if (interaction.user.id !== ctx.ticket.opener_id) {
-        await interaction.reply({ content: 'Only the opener can deny.', ephemeral: true });
+        await interaction.reply({ content: 'Only the opener can deny.', flags: MessageFlags.Ephemeral });
         return;
       }
       await interaction.update({
@@ -229,7 +230,7 @@ async function onSlash(interaction: ChatInputCommandInteraction): Promise<void> 
 
   if (name === 'panel' || name === 'blacklist') {
     if (!interaction.guild) {
-      await interaction.reply({ content: 'Guild only.', ephemeral: true });
+      await interaction.reply({ content: 'Guild only.', flags: MessageFlags.Ephemeral });
       return;
     }
     const member = await interaction.guild.members.fetch(interaction.user.id);
@@ -238,14 +239,14 @@ async function onSlash(interaction: ChatInputCommandInteraction): Promise<void> 
       if (!canManagePanel(member)) {
         await interaction.reply({
           content: 'You do not have permission to send the ticket panel.',
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
         return;
       }
       await refreshAssistancePanel(interaction.client);
       await interaction.reply({
         content: 'Ticket panel refreshed. The Assistance channel now contains a single panel message.',
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -253,7 +254,7 @@ async function onSlash(interaction: ChatInputCommandInteraction): Promise<void> 
     if (!canManagePanel(member)) {
       await interaction.reply({
         content: 'You do not have permission to manage the ticket blacklist.',
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -262,7 +263,7 @@ async function onSlash(interaction: ChatInputCommandInteraction): Promise<void> 
       await blacklistDb.remove(target.id);
       await interaction.reply({
         content: `Removed <@${target.id}> from the ticket blacklist.`,
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
         allowedMentions: { users: [] },
       });
       return;
@@ -272,7 +273,7 @@ async function onSlash(interaction: ChatInputCommandInteraction): Promise<void> 
     });
     await interaction.reply({
       content: `Blacklisted <@${target.id}> from tickets.`,
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
       allowedMentions: { users: [] },
     });
     return;
@@ -286,11 +287,11 @@ async function onSlash(interaction: ChatInputCommandInteraction): Promise<void> 
   if (ticketCommands.has(name)) {
     const ctx = await requireTicketChannel(interaction);
     if (!ctx) {
-      await interaction.reply({ content: 'This command can only be used in an open ticket.', ephemeral: true });
+      await interaction.reply({ content: 'This command can only be used in an open ticket.', flags: MessageFlags.Ephemeral });
       return;
     }
     if (isClosing(ctx.channel.id)) {
-      await interaction.reply({ content: 'Ticket is already closing.', ephemeral: true });
+      await interaction.reply({ content: 'Ticket is already closing.', flags: MessageFlags.Ephemeral });
       return;
     }
 
@@ -299,13 +300,13 @@ async function onSlash(interaction: ChatInputCommandInteraction): Promise<void> 
 
     switch (name) {
       case 'claim': {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const result = await claimTicket(ticket, member, ctx.channel);
         await interaction.editReply(result.ok ? 'Claimed.' : result.error);
         return;
       }
       case 'unclaim': {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         if (ticket.claimed_by !== member.id) {
           await interaction.editReply('Only the claimant can unclaim. Use `/forceunclaim` if you have permission.');
           return;
@@ -315,7 +316,7 @@ async function onSlash(interaction: ChatInputCommandInteraction): Promise<void> 
         return;
       }
       case 'forceunclaim': {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         if (!canForceUnclaim(member)) {
           await interaction.editReply('You do not have permission to force-unclaim.');
           return;
@@ -332,13 +333,13 @@ async function onSlash(interaction: ChatInputCommandInteraction): Promise<void> 
       }
       case 'close': {
         const reason = interaction.options.getString('reason') ?? 'Closed';
-        await interaction.reply({ content: 'Closing ticket…', ephemeral: true });
+        await interaction.reply({ content: 'Closing ticket…', flags: MessageFlags.Ephemeral });
         await closeTicket(ctx.channel, ticket, interaction.user.id, reason);
         return;
       }
       case 'closerequest': {
         if (!isStaffMember(member)) {
-          await interaction.reply({ content: 'Staff only.', ephemeral: true });
+          await interaction.reply({ content: 'Staff only.', flags: MessageFlags.Ephemeral });
           return;
         }
         const reason = interaction.options.getString('reason') ?? undefined;
@@ -350,7 +351,7 @@ async function onSlash(interaction: ChatInputCommandInteraction): Promise<void> 
         return;
       }
       case 'transfer': {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const user = interaction.options.getUser('user', true);
         const target = await interaction.guild!.members.fetch(user.id).catch(() => null);
         if (!target) {
@@ -378,7 +379,7 @@ async function onSlash(interaction: ChatInputCommandInteraction): Promise<void> 
               ? target.id
               : null;
         if (!userId) {
-          await interaction.reply({ content: 'Could not resolve that user.', ephemeral: true });
+          await interaction.reply({ content: 'Could not resolve that user.', flags: MessageFlags.Ephemeral });
           return;
         }
         await addToTicket(ctx.channel, userId);
@@ -393,7 +394,7 @@ async function onSlash(interaction: ChatInputCommandInteraction): Promise<void> 
         if (target instanceof Role) {
           const result = await removeFromTicket(ctx.channel, ticket, target.id);
           if (!result.ok) {
-            await interaction.reply({ content: result.error, ephemeral: true });
+            await interaction.reply({ content: result.error, flags: MessageFlags.Ephemeral });
             return;
           }
           await interaction.reply({
@@ -409,12 +410,12 @@ async function onSlash(interaction: ChatInputCommandInteraction): Promise<void> 
               ? (target as { id: string }).id
               : null;
         if (!userId) {
-          await interaction.reply({ content: 'Could not resolve that user.', ephemeral: true });
+          await interaction.reply({ content: 'Could not resolve that user.', flags: MessageFlags.Ephemeral });
           return;
         }
         const result = await removeFromTicket(ctx.channel, ticket, userId);
         if (!result.ok) {
-          await interaction.reply({ content: result.error, ephemeral: true });
+          await interaction.reply({ content: result.error, flags: MessageFlags.Ephemeral });
           return;
         }
         await interaction.reply({
@@ -424,7 +425,7 @@ async function onSlash(interaction: ChatInputCommandInteraction): Promise<void> 
         return;
       }
       case 'switchpanel': {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         if (!isStaffMember(member)) {
           await interaction.editReply('Staff only.');
           return;
@@ -435,7 +436,7 @@ async function onSlash(interaction: ChatInputCommandInteraction): Promise<void> 
         return;
       }
       case 'rename': {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const input = interaction.options.getString('input', true);
         const name = sanitizeChannelName(input);
         if (!name) {

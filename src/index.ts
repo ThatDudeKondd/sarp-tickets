@@ -2,6 +2,7 @@ import {
   Client,
   Events,
   GatewayIntentBits,
+  MessageFlags,
   Partials,
   REST,
   Routes,
@@ -85,7 +86,7 @@ client.on(Events.InteractionCreate, (interaction) => {
       !interaction.deferred
     ) {
       void interaction
-        .reply({ content: "Something went wrong.", ephemeral: true })
+        .reply({ content: "Something went wrong.", flags: MessageFlags.Ephemeral })
         .catch(() => null);
     }
   });
