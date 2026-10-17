@@ -128,8 +128,12 @@ async function onCloseReasonModal(interaction: ModalSubmitInteraction): Promise<
     return;
   }
   const reason = interaction.fields.getTextInputValue('reason').trim() || 'No reason provided';
-  await interaction.reply({ content: 'Closing…', flags: MessageFlags.Ephemeral });
-  await closeTicket(ctx.channel, ctx.ticket, interaction.user.id, reason);
+  await closeTicket(ctx.channel, ctx.ticket, interaction.user.id, reason, {
+    notify: (notice) => interaction.reply({ components: [notice], flags: V2_FLAGS }),
+  });
+  if (!interaction.replied) {
+    await interaction.reply({ content: 'Ticket is already closing.', flags: MessageFlags.Ephemeral });
+  }
 }
 
 async function onButton(interaction: ButtonInteraction): Promise<void> {
@@ -179,8 +183,11 @@ async function onButton(interaction: ButtonInteraction): Promise<void> {
     }
 
     if (id === 'ticket:close:confirm') {
-      await interaction.deferUpdate().catch(() => null);
-      await closeTicket(ctx.channel, ticket, interaction.user.id, 'Closed');
+      // The confirm prompt itself becomes the closing notice.
+      await closeTicket(ctx.channel, ticket, interaction.user.id, 'Closed', {
+        notify: (notice) => interaction.update({ components: [notice], flags: V2_FLAGS }),
+      });
+      if (!interaction.replied) await interaction.deferUpdate().catch(() => null);
       return;
     }
 
@@ -207,8 +214,10 @@ async function onButton(interaction: ButtonInteraction): Promise<void> {
         await interaction.reply({ content: 'Only the opener can accept.', flags: MessageFlags.Ephemeral });
         return;
       }
-      await interaction.deferUpdate().catch(() => null);
-      await closeTicket(ctx.channel, ctx.ticket, interaction.user.id, 'Closed via close request');
+      await closeTicket(ctx.channel, ctx.ticket, interaction.user.id, 'Closed via close request', {
+        notify: (notice) => interaction.update({ components: [notice], flags: V2_FLAGS }),
+      });
+      if (!interaction.replied) await interaction.deferUpdate().catch(() => null);
       return;
     }
 
@@ -333,8 +342,12 @@ async function onSlash(interaction: ChatInputCommandInteraction): Promise<void> 
       }
       case 'close': {
         const reason = interaction.options.getString('reason') ?? 'Closed';
-        await interaction.reply({ content: 'Closing ticket…', flags: MessageFlags.Ephemeral });
-        await closeTicket(ctx.channel, ticket, interaction.user.id, reason);
+        await closeTicket(ctx.channel, ticket, interaction.user.id, reason, {
+          notify: (notice) => interaction.reply({ components: [notice], flags: V2_FLAGS }),
+        });
+        if (!interaction.replied) {
+          await interaction.reply({ content: 'Ticket is already closing.', flags: MessageFlags.Ephemeral });
+        }
         return;
       }
       case 'closerequest': {

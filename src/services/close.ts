@@ -1,5 +1,5 @@
 import discordTranscripts, { ExportReturnType } from 'discord-html-transcripts-v2';
-import type { TextChannel } from 'discord.js';
+import type { ContainerBuilder, TextChannel } from 'discord.js';
 import { closeDelayMs, getConfig } from '../config';
 import {
   buildClosingNotice,
@@ -21,7 +21,11 @@ export async function closeTicket(
   ticket: TicketRow,
   closedById: string,
   closeReason: string,
-  options?: { delay?: boolean },
+  options?: {
+    delay?: boolean;
+    /** Shows the closing notice as the triggering interaction's response instead of a new message. */
+    notify?: (notice: ContainerBuilder) => Promise<unknown>;
+  },
 ): Promise<void> {
   if (ticket.status !== 'open') return;
   if (closing.has(channel.id)) return;
@@ -29,10 +33,10 @@ export async function closeTicket(
 
   try {
     if (options?.delay !== false) {
-      await channel.send({
-        components: [buildClosingNotice()],
-        flags: V2_FLAGS,
-      });
+      const notice = buildClosingNotice();
+      await (options?.notify
+        ? options.notify(notice)
+        : channel.send({ components: [notice], flags: V2_FLAGS }));
       await new Promise((r) => setTimeout(r, closeDelayMs()));
     }
 
